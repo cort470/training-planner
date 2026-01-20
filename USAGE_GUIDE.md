@@ -636,12 +636,116 @@ The system refuses for safety. This is intentional. Common refusals:
    - Recommendation: Build consistency first
    - Timeline: 4-8 weeks at lower volume
 
+## Phase 3: Enhanced CLI Commands
+
+### Generate Training Plan Command
+
+The `generate-plan` command provides a complete end-to-end workflow:
+
+```bash
+python3 -m src.cli generate-plan --profile tests/fixtures/test_user_valid.json
+```
+
+**What it does:**
+1. Validates the user profile against methodology
+2. Calculates fragility score with breakdown
+3. Generates complete training plan
+4. Displays plan summary (intensity, phases, sample week)
+5. Saves plan JSON to `plans/` directory
+6. Saves enhanced reasoning trace to `reasoning_logs/`
+
+**Example Output:**
+```
+Training Plan Generator
+
+✓ Loaded: Polarized 80/20 Training
+✓ Loaded: test_athlete_001
+
+Step 1: Validation
+✓ Validation: APPROVED
+
+Step 2: Fragility Score
+Fragility Score: 0.44 (Moderate Risk)
+[Detailed breakdown table]
+
+Step 3: Plan Generation
+✓ Generated 12-week plan
+  Intensity: 80.0% Z1-2, 20.0% Z4-5
+  HI Sessions: 3.0/week
+
+✓ Plan saved: plans/plan_test_athlete_001_20260120.json
+```
+
+### Analyze Fragility Command
+
+Standalone fragility analysis without full plan generation:
+
+```bash
+python3 -m src.cli analyze-fragility --profile tests/fixtures/test_user_valid.json
+```
+
+Shows:
+- Color-coded F-Score (green/yellow/orange/red)
+- Detailed breakdown by penalty factor
+- Specific recommendations for improvement
+
+### What-If Analysis Command
+
+Interactive sensitivity analysis to explore scenarios:
+
+```bash
+python3 -m src.cli what-if --profile tests/fixtures/test_user_moderate_fragility.json
+```
+
+**Interactive Flow:**
+```
+Baseline State:
+  Sleep: 6.5 hrs
+  Stress: moderate
+  F-Score: 0.52 (Moderate Risk)
+  HI Sessions: 2.0/week
+
+What assumption would you like to modify?
+  [1] sleep_hours
+  [2] stress_level
+  [3] weekly_volume_hours
+  [4] injury_status
+  [5] exit
+
+> 1
+
+Enter new sleep_hours value (current: 6.5): 7.5
+
+SCENARIO RESULTS
+Modified: sleep_hours (6.5 → 7.5)
+Fragility: 0.52 → 0.45 (Δ -0.070)
+Plan Adjustments:
+  HI Sessions: +1.0/week
+```
+
+**Supported Modifications:**
+- `sleep_hours` - Average nightly sleep
+- `stress_level` - low, moderate, high
+- `weekly_volume_hours` - Training volume
+- `injury_status` - Active injury status
+
+### Command Options
+
+All commands support:
+- `--methodology` or `-m`: Path to methodology file (default: models/methodology_polarized.json)
+- `--profile` or `-p`: Path to user profile JSON
+
+`generate-plan` specific options:
+- `--save-plan/--no-save`: Control plan file saving (default: save)
+- `--save-trace/--no-trace`: Control trace saving (default: save)
+
 ## Additional Resources
 
 - **API Documentation:** See docstrings in source files
 - **Schema Reference:** [docs/schema_user_profile.json](docs/schema_user_profile.json)
 - **Methodology Guide:** [docs/methodology_guide.md](docs/methodology_guide.md)
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **CLI Reference:** Run `python3 -m src.cli --help` for all commands
 
 ## Getting Help
 
@@ -649,3 +753,4 @@ The system refuses for safety. This is intentional. Common refusals:
 - Review test fixtures for example profiles
 - Open an issue for questions or bugs
 - Consult [docs/prd_v3.txt](docs/prd_v3.txt) for design rationale
+- Use `--help` flag on any command for usage details

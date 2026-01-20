@@ -137,14 +137,56 @@ The validation command will:
 - Save reasoning trace to `reasoning_logs/`
 - Display clear approval/refusal with detailed reasoning
 
-### 2. View Methodology Details
+### 2. Analyze Fragility Score
+
+```bash
+# Detailed fragility breakdown
+python3 -m src.cli analyze-fragility --profile tests/fixtures/test_user_valid.json
+```
+
+Shows:
+- F-Score with color-coded risk level
+- Breakdown by penalty factor
+- Actionable recommendations
+
+### 3. Generate Training Plan
+
+```bash
+# Generate complete training plan
+python3 -m src.cli generate-plan --profile tests/fixtures/test_user_valid.json
+```
+
+Creates:
+- Validation check
+- Fragility score calculation
+- 12-week training plan with phases
+- 80/20 intensity distribution
+- Saves plan JSON and reasoning trace
+
+### 4. Run "What-If" Scenarios
+
+```bash
+# Interactive sensitivity analysis
+python3 -m src.cli what-if --profile tests/fixtures/test_user_moderate_fragility.json
+```
+
+Explore:
+- How sleep changes affect fragility
+- Impact of stress level modifications
+- Volume adjustments
+- Plan changes based on assumption changes
+
+### 5. View Methodology Details
 
 ```bash
 # Show methodology information
 python3 -m src.cli methodology --show models/methodology_polarized.json
+
+# List all available methodologies
+python3 -m src.cli methodology --list
 ```
 
-### 3. Programmatic API Usage
+### 6. Programmatic API Usage
 
 ```python
 from pathlib import Path
@@ -186,7 +228,7 @@ else:
         print(f"  - {gate.condition}: {gate.reasoning}")
 ```
 
-### 4. Sensitivity Analysis
+### 7. Sensitivity Analysis (Programmatic)
 
 ```python
 from src.sensitivity import SensitivityAnalyzer
@@ -355,11 +397,11 @@ This is a demonstration project focused on AI alignment principles in fitness ap
 - [x] 80/20 polarized intensity distribution
 - [x] Fragility-based HI frequency adjustments
 
-### 🚧 Phase 3: CLI Enhancement (Optional)
-- [ ] `generate-plan` command - Full plan generation workflow
-- [ ] `what-if` command - Interactive sensitivity analysis
-- [ ] `analyze-fragility` command - Standalone fragility analysis
-- [ ] Rich display functions for fragility gauge and plan summaries
+### ✅ Phase 3: CLI Enhancement (Complete)
+- [x] `generate-plan` command - Full plan generation workflow
+- [x] `what-if` command - Interactive sensitivity analysis
+- [x] `analyze-fragility` command - Standalone fragility analysis
+- [x] Rich display functions for fragility gauge and plan summaries
 
 ### 🔮 Phase 4: Future Enhancements
 - [ ] Multi-methodology support
@@ -382,4 +424,4 @@ Built with principles from:
 
 ---
 
-**Current Status:** Phase 1 & 2 complete with 105/106 tests passing. Ready for Phase 3 CLI enhancements or production use via programmatic API.
+**Current Status:** Phase 1, 2 & 3 complete with 105/106 tests passing. All CLI commands and programmatic APIs ready for production use.

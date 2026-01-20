@@ -31,12 +31,131 @@ from src.schemas import (
 )
 from src.validator import MethodologyValidator
 from src.trace import save_trace_from_result
+from src.fragility import FragilityCalculator, FragilityResult
+from src.planner import TrainingPlanGenerator
+from src.sensitivity import SensitivityAnalyzer, SensitivityResult
+from src.plan_schemas import TrainingPlan, IntensityZone
+from rich import box
 
 # Initialize Typer app and Rich console
 app = typer.Typer(
     help="Human-in-the-Loop Training Planner - Transparent, interpretable training guidance"
 )
 console = Console()
+
+
+# ===== DISPLAY HELPER FUNCTIONS =====
+
+
+def _display_fragility_summary(result: FragilityResult, detailed: bool = False):
+    """
+    Display fragility score with color-coded interpretation and breakdown.
+
+    Args:
+        result: FragilityResult from calculator
+        detailed: If True, shows additional details and explanations
+    """
+    # Color-code by risk level
+    score = result.score
+    if score < 0.4:
+        color = "green"
+    elif score < 0.6:
+        color = "yellow"
+    elif score < 0.8:
+        color = "orange"
+    else:
+        color = "red"
+
+    console.print(f"\n[bold]Fragility Score: [{color}]{score:.2f}[/{color}] "
+                  f"({result.interpretation})[/bold]\n")
+
+    # Breakdown table
+    table = Table(title="Fragility Score Breakdown", box=box.ROUNDED)
+    table.add_column("Factor", style="cyan")
+    table.add_column("Contribution", justify="right", style="yellow")
+
+    for factor, contribution in result.breakdown.items():
+        factor_name = factor.replace("_", " ").title()
+        table.add_row(factor_name, f"{contribution:+.3f}")
+
+    console.print(table)
+
+    # Recommendations
+    if result.recommendations:
+        console.print("\n[bold]Recommendations:[/bold]")
+        for rec in result.recommendations:
+            console.print(f"  • {rec}")
+
+
+def _display_plan_summary(plan: TrainingPlan):
+    """
+    Display training plan summary with intensity distribution and phases.
+
+    Args:
+        plan: TrainingPlan object
+    """
+    console.print(f"\n✓ Generated [green]{plan.plan_duration_weeks}-week plan[/green]")
+    console.print(f"  Start: {plan.plan_start_date}")
+    console.print(f"  Fragility: {plan.fragility_score:.2f}")
+
+    # Intensity distribution
+    intensity_dist = plan.calculate_intensity_distribution()
+    console.print("\n[bold]Intensity Distribution:[/bold]")
+    console.print(f"  Low (Z1-Z2):  {intensity_dist.low_intensity_percent:.1f}%")
+    console.print(f"  Threshold (Z3): {intensity_dist.threshold_percent:.1f}%")
+    console.print(f"  High (Z4-Z5): {intensity_dist.high_intensity_percent:.1f}%")
+
+    # Phase breakdown
+    phase_breakdown = plan.get_phase_breakdown()
+    console.print("\n[bold]Phase Distribution:[/bold]")
+    for phase, weeks in phase_breakdown.items():
+        console.print(f"  {phase}: {weeks} weeks")
+
+    # Sample first week (first 3 sessions)
+    if plan.weeks:
+        first_week = plan.weeks[0]
+        console.print(f"\n[bold]Sample Week {first_week.week_number} ({first_week.phase.value}):[/bold]")
+        for session in first_week.sessions[:3]:
+            desc_short = session.description[:55] + "..." if len(session.description) > 55 else session.description
+            console.print(f"  {session.day.value}: {desc_short}")
+            console.print(f"    Zone: {session.primary_zone.value}, Duration: {session.duration_minutes}min")
+
+
+def _display_sensitivity_result(scenario: SensitivityResult):
+    """
+    Display sensitivity analysis scenario results with deltas.
+
+    Args:
+        scenario: SensitivityResult from analyzer
+    """
+    console.print(f"\n[bold]SCENARIO RESULTS[/bold]")
+    console.print(f"Modified: {scenario.modified_assumption} "
+                  f"({scenario.original_value} → {scenario.new_value})\n")
+
+    # Fragility change
+    if scenario.new_fragility is not None and scenario.original_fragility is not None:
+        delta = scenario.fragility_delta
+        delta_color = "green" if delta < 0 else "red"
+
+        console.print(f"Fragility: {scenario.original_fragility:.2f} → "
+                      f"{scenario.new_fragility:.2f} "
+                      f"([{delta_color}]Δ {delta:+.3f}[/{delta_color}])")
+
+    # Plan adjustments
+    if scenario.plan_adjustments:
+        console.print("\n[bold]Plan Adjustments:[/bold]")
+        adj = scenario.plan_adjustments
+        if adj.hi_sessions_per_week_delta != 0:
+            console.print(f"  HI Sessions: {adj.hi_sessions_per_week_delta:+.1f}/week")
+        if adj.volume_delta_percent != 0:
+            console.print(f"  Volume: {adj.volume_delta_percent:+.1f}%")
+
+    # Validation change
+    val_changed = "changed" if scenario.validation_changed else "unchanged"
+    console.print(f"\nValidation: {scenario.new_validation_status} ({val_changed})")
+
+
+# ===== CLI COMMANDS =====
 
 
 @app.command()
@@ -166,6 +285,282 @@ def methodology(
             raise typer.Exit(1)
     else:
         console.print("[yellow]Use --show <id> to view a methodology or --list to see all[/yellow]")
+
+
+@app.command()
+def analyze_fragility(
+    profile: Path = typer.Option(
+        ...,
+        "--profile",
+        "-p",
+        help="Path to user profile JSON file",
+        exists=True,
+    ),
+    methodology: Path = typer.Option(
+        Path("models/methodology_polarized.json"),
+        "--methodology",
+        "-m",
+        help="Path to methodology JSON file",
+        exists=True,
+    ),
+):
+    """
+    Standalone fragility score analysis with detailed breakdown.
+    """
+    console.print("\n[bold cyan]Fragility Analysis[/bold cyan]\n")
+
+    # Load methodology
+    try:
+        validator = MethodologyValidator.from_file(methodology)
+    except Exception as e:
+        console.print(f"[red]✗ Failed to load methodology: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Load profile
+    try:
+        with open(profile) as f:
+            user_profile = UserProfile(**json.load(f))
+    except Exception as e:
+        console.print(f"[red]✗ Failed to load profile: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Calculate fragility
+    calculator = FragilityCalculator(validator.methodology)
+    fragility_result = calculator.calculate(user_profile)
+
+    # Display detailed breakdown
+    _display_fragility_summary(fragility_result, detailed=True)
+    console.print()
+
+
+@app.command()
+def generate_plan(
+    profile: Path = typer.Option(
+        ...,
+        "--profile",
+        "-p",
+        help="Path to user profile JSON file",
+        exists=True,
+    ),
+    methodology: Path = typer.Option(
+        Path("models/methodology_polarized.json"),
+        "--methodology",
+        "-m",
+        help="Path to methodology JSON file",
+        exists=True,
+    ),
+    save_plan: bool = typer.Option(
+        True,
+        "--save-plan/--no-save",
+        help="Save plan to JSON file",
+    ),
+    save_trace: bool = typer.Option(
+        True,
+        "--save-trace/--no-trace",
+        help="Save reasoning trace to file",
+    ),
+):
+    """
+    Generate training plan after validation.
+
+    Workflow:
+    1. Validate user profile
+    2. Calculate fragility score
+    3. Generate training plan
+    4. Display summary
+    5. Save plan and reasoning trace
+    """
+    console.print("\n[bold cyan]Training Plan Generator[/bold cyan]\n")
+
+    # Load methodology
+    try:
+        validator = MethodologyValidator.from_file(methodology)
+        console.print(f"✓ Loaded: [green]{validator.methodology.name}[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Failed to load methodology: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Load profile
+    try:
+        with open(profile) as f:
+            user_profile = UserProfile(**json.load(f))
+        console.print(f"✓ Loaded: [green]{user_profile.athlete_id}[/green]\n")
+    except Exception as e:
+        console.print(f"[red]✗ Failed to load profile: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Validate
+    console.print("[bold]Step 1: Validation[/bold]")
+    result = validator.validate(user_profile)
+
+    if not result.approved:
+        console.print("[red]✗ Validation failed. Cannot generate plan.[/red]\n")
+        _display_validation_result(validator, result)
+        raise typer.Exit(1)
+
+    console.print("[green]✓ Validation: APPROVED[/green]\n")
+
+    # Calculate fragility
+    console.print("[bold]Step 2: Fragility Score[/bold]")
+    calculator = FragilityCalculator(validator.methodology)
+    fragility_result = calculator.calculate(user_profile)
+    _display_fragility_summary(fragility_result)
+
+    # Generate plan
+    console.print("\n[bold]Step 3: Plan Generation[/bold]")
+    generator = TrainingPlanGenerator(validator.methodology, result)
+    plan = generator.generate(user_profile)
+
+    # Display plan summary
+    _display_plan_summary(plan)
+
+    # Save plan
+    if save_plan:
+        plan_dir = Path("plans")
+        plan_dir.mkdir(exist_ok=True)
+        plan_path = plan_dir / f"plan_{user_profile.athlete_id}_{date.today().strftime('%Y%m%d')}.json"
+
+        with open(plan_path, "w") as f:
+            json.dump(plan.model_dump(mode="json"), f, indent=2, default=str)
+
+        console.print(f"\n✓ Plan saved: [cyan]{plan_path}[/cyan]")
+
+    # Save trace
+    if save_trace:
+        trace_dir = Path("reasoning_logs")
+        trace_path = save_trace_from_result(result, trace_dir, format="markdown")
+        console.print(f"✓ Trace saved: [cyan]{trace_path}[/cyan]")
+
+    console.print()
+
+
+@app.command()
+def what_if(
+    profile: Path = typer.Option(
+        ...,
+        "--profile",
+        "-p",
+        help="Path to user profile JSON file",
+        exists=True,
+    ),
+    methodology: Path = typer.Option(
+        Path("models/methodology_polarized.json"),
+        "--methodology",
+        "-m",
+        help="Path to methodology JSON file",
+        exists=True,
+    ),
+):
+    """
+    Interactive sensitivity analysis ("what-if" scenarios).
+
+    Explore how changes to assumptions affect fragility scores and training plans.
+    """
+    console.print("\n[bold cyan]Sensitivity Analysis[/bold cyan]\n")
+
+    # Load methodology
+    try:
+        validator = MethodologyValidator.from_file(methodology)
+    except Exception as e:
+        console.print(f"[red]✗ Failed to load methodology: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Load profile
+    try:
+        with open(profile) as f:
+            user_profile = UserProfile(**json.load(f))
+    except Exception as e:
+        console.print(f"[red]✗ Failed to load profile: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Validate baseline
+    baseline_result = validator.validate(user_profile)
+
+    # Calculate baseline fragility
+    calculator = FragilityCalculator(validator.methodology)
+    baseline_fragility = calculator.calculate(user_profile)
+
+    # Generate baseline plan if approved
+    baseline_plan = None
+    if baseline_result.approved:
+        generator = TrainingPlanGenerator(validator.methodology, baseline_result)
+        baseline_plan = generator.generate(user_profile)
+
+    # Show baseline state
+    console.print("[bold]Baseline State:[/bold]")
+    console.print(f"  Sleep: {user_profile.current_state.sleep_hours} hrs")
+    console.print(f"  Stress: {user_profile.current_state.stress_level.value}")
+    console.print(f"  Volume: {user_profile.current_state.weekly_volume_hours} hrs/week")
+    console.print(f"  F-Score: {baseline_fragility.score:.2f} ({baseline_fragility.interpretation})")
+
+    if baseline_plan:
+        # Calculate average HI sessions per week
+        total_hi_sessions = 0
+        for week in baseline_plan.weeks:
+            hi_sessions = len([
+                s for s in week.sessions
+                if s.primary_zone in [IntensityZone.ZONE_4, IntensityZone.ZONE_5]
+            ])
+            total_hi_sessions += hi_sessions
+        avg_hi = total_hi_sessions / len(baseline_plan.weeks)
+        console.print(f"  HI Sessions: {avg_hi:.1f}/week")
+
+    console.print()
+
+    # Create analyzer
+    analyzer = SensitivityAnalyzer(
+        validator.methodology,
+        user_profile,
+        baseline_result,
+        baseline_plan,
+    )
+
+    # Interactive loop
+    scenario_count = 0
+    while True:
+        assumption = Prompt.ask(
+            "\nWhat assumption would you like to modify?",
+            choices=["sleep_hours", "stress_level", "weekly_volume_hours", "injury_status", "exit"],
+        )
+
+        if assumption == "exit":
+            break
+
+        # Get current value
+        current_value = getattr(user_profile.current_state, assumption)
+
+        # Prompt for new value
+        new_value_str = Prompt.ask(f"Enter new {assumption} value (current: {current_value})")
+
+        # Parse based on type
+        try:
+            if assumption in ["sleep_hours", "weekly_volume_hours"]:
+                new_value = float(new_value_str)
+            elif assumption == "stress_level":
+                new_value = StressLevel(new_value_str)
+            elif assumption == "injury_status":
+                new_value = new_value_str.lower() in ["true", "yes", "1"]
+            else:
+                new_value = new_value_str
+
+            # Run scenario
+            console.print("\n[bold]Analyzing scenario...[/bold]")
+            scenario_result = analyzer.modify_assumption(f"current_state.{assumption}", new_value)
+
+            # Display results
+            _display_sensitivity_result(scenario_result)
+
+            scenario_count += 1
+
+        except Exception as e:
+            console.print(f"[red]✗ Error: {e}[/red]")
+            continue
+
+        # Ask to continue
+        if not Confirm.ask("\nRun another scenario?", default=True):
+            break
+
+    console.print(f"\n[dim]Summary: Explored {scenario_count} scenario(s)[/dim]\n")
 
 
 def create_profile_interactive() -> UserProfile:
