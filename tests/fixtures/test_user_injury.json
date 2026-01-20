@@ -1,0 +1,57 @@
+{
+  "athlete_id": "test_athlete_002",
+  "profile_date": "2026-01-19",
+  "current_state": {
+    "sleep_hours": 8.0,
+    "sleep_consistency": 0.3,
+    "injury_status": true,
+    "injury_details": "Left knee patellofemoral pain - started 3 days ago during run",
+    "stress_level": "low",
+    "weekly_volume_hours": 10.0,
+    "volume_consistency_weeks": 8,
+    "resting_heart_rate": 54,
+    "hrv_trend": "stable",
+    "recent_illness": false
+  },
+  "training_history": {
+    "years_training": 2,
+    "recent_races": [],
+    "injury_history": [
+      {
+        "injury_type": "Right achilles tendinopathy",
+        "date_occurred": "2025-06-10",
+        "resolved": true
+      }
+    ]
+  },
+  "goals": {
+    "primary_goal": "race_performance",
+    "race_date": "2026-05-24",
+    "race_distance": "half_ironman",
+    "weeks_to_race": 18,
+    "priority_level": "B"
+  },
+  "constraints": {
+    "available_training_days": 5,
+    "max_session_duration_hours": 3.0,
+    "equipment_access": {
+      "pool_access": true,
+      "bike_trainer": false,
+      "power_meter": false,
+      "heart_rate_monitor": true
+    },
+    "environmental_factors": {
+      "climate": "temperate",
+      "altitude_meters": 100
+    }
+  },
+  "preferences": {
+    "preferred_intensity_distribution": "polarized",
+    "long_workout_day": "sunday",
+    "rest_day": "wednesday"
+  },
+  "metadata": {
+    "created_at": "2026-01-19T11:30:00Z",
+    "notes": "Test case: Circuit breaker - injury status triggers refusal"
+  }
+}

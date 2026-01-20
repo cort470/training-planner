@@ -1,0 +1,182 @@
+{
+  "id": "polarized_80_20_v1",
+  "name": "Polarized 80/20 Training",
+  "version": "1.0.0",
+  "last_updated": "2026-01-19",
+  "philosophy": {
+    "one_line_description": "80% low-intensity (Zone 1-2), 20% high-intensity (Zone 4-5) distribution",
+    "core_logic": "Maximizes aerobic development while minimizing injury risk and overtraining through careful intensity distribution. The bulk of training volume builds aerobic efficiency at conversational pace, while strategic high-intensity sessions stimulate VO2max and lactate threshold adaptations.",
+    "metabolic_focus": [
+      "aerobic_base",
+      "vo2max",
+      "lactate_threshold"
+    ]
+  },
+  "assumptions": [
+    {
+      "key": "sleep_hours",
+      "expectation": "Consistent sleep ≥7.0 hours per night (7-day average)",
+      "reasoning_justification": "Recovery drives adaptation. High-intensity sessions (20% of training) create significant physiological stress that requires adequate sleep for protein synthesis, hormonal balance, and central nervous system recovery. Insufficient sleep impairs intensity execution and increases injury risk.",
+      "criticality": "high",
+      "validation_rule": "user.sleep_hours >= 7.0"
+    },
+    {
+      "key": "injury_status",
+      "expectation": "No active injuries or pain requiring modification",
+      "reasoning_justification": "Polarized training includes high-intensity efforts near maximum capacity. Training through injury compromises form, delays healing, and risks chronic damage. Pain is a signal that tissue is not ready for training load.",
+      "criticality": "high",
+      "validation_rule": "user.injury_status == false"
+    },
+    {
+      "key": "volume_consistency_weeks",
+      "expectation": "Base volume established for 4+ consecutive weeks",
+      "reasoning_justification": "Intensity work requires aerobic foundation to avoid injury and ensure workout quality. The body adapts to volume before it can safely handle intensity. Premature intensity work leads to overuse injuries and incomplete recovery.",
+      "criticality": "high",
+      "validation_rule": "user.volume_consistency_weeks >= 4"
+    },
+    {
+      "key": "stress_level",
+      "expectation": "Non-training stress rated as low or moderate",
+      "reasoning_justification": "High life stress elevates cortisol, impairs recovery, and reduces training capacity. The body does not differentiate between training stress and life stress when allocating recovery resources. High stress + high-intensity training = overtraining risk.",
+      "criticality": "medium",
+      "validation_rule": "user.stress_level in ['low', 'moderate']"
+    },
+    {
+      "key": "weekly_volume_hours",
+      "expectation": "Current volume between 6-20 hours per week",
+      "reasoning_justification": "Polarized training requires sufficient volume to build aerobic base (lower bound) while avoiding excessive fatigue that compromises intensity quality (upper bound). Below 6hrs, insufficient stimulus for adaptation. Above 20hrs, recovery demands exceed most age-group athletes' capacity.",
+      "criticality": "medium",
+      "validation_rule": "6.0 <= user.weekly_volume_hours <= 20.0"
+    },
+    {
+      "key": "recent_illness",
+      "expectation": "No recent illness in last 14 days",
+      "reasoning_justification": "Post-viral fatigue can persist for weeks and is often masked during low-intensity work but revealed during high-intensity efforts. Training too soon after illness increases cardiac risk and delays full recovery.",
+      "criticality": "medium",
+      "validation_rule": "user.recent_illness == false"
+    }
+  ],
+  "safety_gates": {
+    "exclusion_criteria": [
+      {
+        "condition": "injury_status",
+        "threshold": "true",
+        "severity": "blocking",
+        "validation_logic": "IF user.injury_status == true THEN REFUSE",
+        "bridge_action": "Seek evaluation and clearance from sports medicine professional or physical therapist. Return when injury_status == false and you have written clearance to resume training."
+      },
+      {
+        "condition": "sleep_hours",
+        "threshold": "< 6.0",
+        "severity": "blocking",
+        "validation_logic": "IF user.sleep_hours < 6.0 THEN REFUSE",
+        "bridge_action": "Establish consistent sleep routine targeting 7.5+ hours. Address sleep hygiene (dark room, cool temperature, consistent schedule). Consider sleep tracking to identify patterns. Return when 7-day average ≥ 7.0 hours."
+      },
+      {
+        "condition": "volume_consistency_weeks",
+        "threshold": "< 4",
+        "severity": "blocking",
+        "validation_logic": "IF user.volume_consistency_weeks < 4 THEN REFUSE",
+        "bridge_action": "Complete 4 weeks of consistent aerobic base building at current volume before introducing structured intensity. Focus on Zone 1-2 work only. Return when volume_consistency_weeks ≥ 4."
+      },
+      {
+        "condition": "stress_level",
+        "threshold": "== 'high'",
+        "severity": "warning",
+        "validation_logic": "IF user.stress_level == 'high' THEN WARN",
+        "bridge_action": "Reduce non-training stressors where possible, OR reduce training volume by 20-30% and eliminate high-intensity sessions until stress returns to moderate. High stress + intense training = overtraining risk."
+      },
+      {
+        "condition": "recent_illness",
+        "threshold": "true",
+        "severity": "blocking",
+        "validation_logic": "IF user.recent_illness == true THEN REFUSE",
+        "bridge_action": "Allow 7-14 days post-symptom resolution before resuming structured training. Start with easy aerobic sessions only. Monitor resting heart rate and perceived exertion. Return when recent_illness == false and resting HR is within 5% of baseline."
+      },
+      {
+        "condition": "weekly_volume_hours",
+        "threshold": "< 6.0 OR > 20.0",
+        "severity": "blocking",
+        "validation_logic": "IF user.weekly_volume_hours < 6.0 OR user.weekly_volume_hours > 20.0 THEN REFUSE",
+        "bridge_action": "Adjust weekly volume to 6-20 hour range. If below 6hrs, gradually build volume before introducing intensity. If above 20hrs, reduce volume to allow quality intensity work. Volume and intensity are inversely related for age-group athletes."
+      }
+    ],
+    "refusal_bridge_template": "⛔ SAFETY GATE TRIGGERED - PLAN GENERATION REFUSED\n\n📋 CONDITION: {condition} {threshold}\n❌ VIOLATED ASSUMPTION: {assumption_expectation}\n\n🔍 REASONING:\n{reasoning_justification}\n\n✅ PATH FORWARD:\n{bridge_action}\n\n⏳ Return to this methodology when the above conditions are satisfied."
+  },
+  "risk_profile": {
+    "fragility_score": 0.4,
+    "sensitivity_factors": [
+      "sleep_consistency",
+      "stress_load",
+      "recovery_between_intensity_sessions",
+      "nutrition_timing_around_hard_workouts",
+      "illness_exposure"
+    ],
+    "fragility_calculation_weights": {
+      "sleep_deviation": 0.15,
+      "stress_multiplier": 0.12,
+      "volume_variance": 0.10,
+      "intensity_frequency": 0.08,
+      "recovery_quality": 0.10
+    }
+  },
+  "failure_modes": [
+    {
+      "condition": "Missed 2+ high-intensity sessions in same week",
+      "early_warning_signals": [
+        "Elevated resting heart rate (>5% above baseline)",
+        "Persistent fatigue despite adequate sleep",
+        "Motivation decline or training avoidance",
+        "Unable to hit target power/pace in workouts"
+      ],
+      "mitigation_strategy": "Insert 3-5 day recovery block with 50% volume reduction and zero intensity. Resume with single intensity session per week, monitoring recovery response before returning to normal frequency."
+    },
+    {
+      "condition": "Sleep average drops below 6.5hrs for 3+ consecutive days",
+      "early_warning_signals": [
+        "Difficulty waking/morning grogginess",
+        "Irritability or mood changes",
+        "Decreased workout performance",
+        "Increased perceived exertion for same pace/power"
+      ],
+      "mitigation_strategy": "Immediately eliminate all intensity sessions. Reduce volume by 30%. Focus on sleep optimization (naps, earlier bedtime, stress management). Do not resume intensity until 7-day sleep average ≥ 7.0 hours."
+    },
+    {
+      "condition": "Onset of overuse injury during training block",
+      "early_warning_signals": [
+        "Localized pain that worsens during workout",
+        "Pain that persists 24+ hours post-workout",
+        "Compensation patterns developing (altered gait/stroke)",
+        "Stiffness that doesn't resolve with warm-up"
+      ],
+      "mitigation_strategy": "Stop aggravating activity immediately. Seek professional evaluation. Do not train through pain. Cross-train in non-impact modalities if cleared. Address biomechanical causes before resuming."
+    },
+    {
+      "condition": "Cumulative fatigue from inadequate recovery between intensity sessions",
+      "early_warning_signals": [
+        "HRV trending downward for 5+ days",
+        "Inability to reach target heart rate zones",
+        "Increased muscle soreness duration",
+        "Poor sleep quality despite adequate duration",
+        "Loss of enthusiasm for training"
+      ],
+      "mitigation_strategy": "Insert full recovery week with 40-50% volume reduction and zero intensity. Focus on sleep, nutrition, and stress management. Resume at reduced intensity frequency (2 sessions/week instead of 3) for 2 weeks before returning to normal schedule."
+    }
+  ],
+  "references": [
+    {
+      "citation": "Seiler, S., & Tønnessen, E. (2009). Intervals, thresholds, and long slow distance: the role of intensity and duration in endurance training. Sportscience, 13, 32-53.",
+      "url": "https://www.sportsci.org/2009/ss.htm",
+      "relevance": "Foundational research establishing the effectiveness of polarized intensity distribution in elite endurance athletes."
+    },
+    {
+      "citation": "Stöggl, T. L., & Sperlich, B. (2015). The training intensity distribution among well-trained and elite endurance athletes. Frontiers in Physiology, 6, 295.",
+      "url": "https://doi.org/10.3389/fphys.2015.00295",
+      "relevance": "Meta-analysis demonstrating prevalence of polarized training across multiple endurance sports and performance levels."
+    },
+    {
+      "citation": "Kenttä, G., & Hassmén, P. (1998). Overtraining and recovery: A conceptual model. Sports Medicine, 26(1), 1-16.",
+      "relevance": "Framework for understanding relationship between training stress, recovery capacity, and overtraining syndrome. Informs safety gates and failure modes."
+    }
+  ]
+}

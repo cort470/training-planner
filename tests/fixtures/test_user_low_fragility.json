@@ -1,0 +1,36 @@
+{
+  "athlete_id": "test_athlete_low_fragility",
+  "profile_date": "2026-01-20",
+  "current_state": {
+    "sleep_hours": 8.5,
+    "injury_status": false,
+    "stress_level": "low",
+    "weekly_volume_hours": 12.0,
+    "volume_consistency_weeks": 10,
+    "recent_illness": false,
+    "hrv_trend": "increasing"
+  },
+  "training_history": {
+    "years_training": 5,
+    "recent_races": []
+  },
+  "goals": {
+    "primary_goal": "race_performance",
+    "race_date": "2026-06-01",
+    "race_distance": "olympic",
+    "weeks_to_race": 18
+  },
+  "constraints": {
+    "available_training_days": 7,
+    "max_session_duration_hours": 3.0
+  },
+  "preferences": {
+    "preferred_intensity_distribution": "polarized",
+    "long_workout_day": "saturday",
+    "rest_day": null
+  },
+  "metadata": {
+    "created_at": "2026-01-20T10:00:00Z",
+    "notes": "Test case: Low fragility - excellent sleep, low stress, good volume, increasing HRV, long timeline"
+  }
+}

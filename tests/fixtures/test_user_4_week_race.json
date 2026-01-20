@@ -1,0 +1,42 @@
+{
+  "athlete_id": "test_athlete_4_week_race",
+  "profile_date": "2026-01-20",
+  "current_state": {
+    "sleep_hours": 8.0,
+    "injury_status": false,
+    "stress_level": "moderate",
+    "weekly_volume_hours": 12.0,
+    "volume_consistency_weeks": 10,
+    "recent_illness": false,
+    "hrv_trend": "stable"
+  },
+  "training_history": {
+    "years_training": 4,
+    "recent_races": [
+      {
+        "date": "2025-12-01",
+        "distance": "sprint",
+        "finish_time": "1:12:45"
+      }
+    ]
+  },
+  "goals": {
+    "primary_goal": "race_performance",
+    "race_date": "2026-02-17",
+    "race_distance": "sprint",
+    "weeks_to_race": 4
+  },
+  "constraints": {
+    "available_training_days": 6,
+    "max_session_duration_hours": 2.5
+  },
+  "preferences": {
+    "preferred_intensity_distribution": "polarized",
+    "long_workout_day": "saturday",
+    "rest_day": "monday"
+  },
+  "metadata": {
+    "created_at": "2026-01-20T10:00:00Z",
+    "notes": "Test case: Short 4-week plan generation - short timeline, higher intensity pressure, sprint distance"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "athlete_id": "test_athlete_003",
+  "profile_date": "2026-01-19",
+  "current_state": {
+    "sleep_hours": 5.5,
+    "sleep_consistency": 1.2,
+    "injury_status": false,
+    "stress_level": "moderate",
+    "weekly_volume_hours": 12.0,
+    "volume_consistency_weeks": 10,
+    "resting_heart_rate": 58,
+    "hrv_trend": "decreasing",
+    "recent_illness": false
+  },
+  "training_history": {
+    "years_training": 4,
+    "recent_races": [
+      {
+        "date": "2025-10-05",
+        "distance": "half_ironman",
+        "finish_time": "5:15:00"
+      }
+    ],
+    "injury_history": []
+  },
+  "goals": {
+    "primary_goal": "race_performance",
+    "race_date": "2026-06-14",
+    "race_distance": "half_ironman",
+    "goal_finish_time": "5:00:00",
+    "weeks_to_race": 21,
+    "priority_level": "A"
+  },
+  "constraints": {
+    "available_training_days": 6,
+    "max_session_duration_hours": 2.0,
+    "equipment_access": {
+      "pool_access": true,
+      "bike_trainer": true,
+      "power_meter": true,
+      "heart_rate_monitor": true
+    },
+    "environmental_factors": {
+      "climate": "hot_humid",
+      "altitude_meters": 0
+    }
+  },
+  "preferences": {
+    "preferred_intensity_distribution": "polarized",
+    "long_workout_day": "saturday",
+    "rest_day": "friday"
+  },
+  "metadata": {
+    "created_at": "2026-01-19T14:15:00Z",
+    "notes": "Test case: Circuit breaker - sleep threshold violation (5.5 < 6.0)"
+  }
+}

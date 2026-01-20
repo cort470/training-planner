@@ -1,0 +1,42 @@
+{
+  "athlete_id": "test_athlete_12_week_race",
+  "profile_date": "2026-01-20",
+  "current_state": {
+    "sleep_hours": 7.5,
+    "injury_status": false,
+    "stress_level": "low",
+    "weekly_volume_hours": 10.0,
+    "volume_consistency_weeks": 8,
+    "recent_illness": false,
+    "hrv_trend": "stable"
+  },
+  "training_history": {
+    "years_training": 3,
+    "recent_races": [
+      {
+        "date": "2025-09-15",
+        "distance": "olympic",
+        "finish_time": "2:45:30"
+      }
+    ]
+  },
+  "goals": {
+    "primary_goal": "race_performance",
+    "race_date": "2026-04-12",
+    "race_distance": "olympic",
+    "weeks_to_race": 12
+  },
+  "constraints": {
+    "available_training_days": 6,
+    "max_session_duration_hours": 2.5
+  },
+  "preferences": {
+    "preferred_intensity_distribution": "polarized",
+    "long_workout_day": "saturday",
+    "rest_day": "sunday"
+  },
+  "metadata": {
+    "created_at": "2026-01-20T10:00:00Z",
+    "notes": "Test case: Standard 12-week plan generation - good base, low fragility, 6 training days available"
+  }
+}

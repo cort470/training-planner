@@ -1,0 +1,314 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserProfile",
+  "description": "Schema for athlete current state and training context. Used for methodology validation.",
+  "type": "object",
+  "required": [
+    "athlete_id",
+    "profile_date",
+    "current_state",
+    "goals"
+  ],
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "description": "Unique identifier for the athlete",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "examples": ["athlete_001", "john_doe_2026"]
+    },
+    "profile_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this profile snapshot was created (ISO 8601)"
+    },
+    "current_state": {
+      "type": "object",
+      "required": [
+        "sleep_hours",
+        "injury_status",
+        "stress_level",
+        "weekly_volume_hours"
+      ],
+      "description": "Current physiological and contextual state of the athlete",
+      "properties": {
+        "sleep_hours": {
+          "type": "number",
+          "minimum": 4,
+          "maximum": 12,
+          "description": "Average sleep hours per night over last 7 days",
+          "examples": [7.5, 6.0, 8.5]
+        },
+        "sleep_consistency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Standard deviation of sleep hours over last 7 days (lower = more consistent)",
+          "examples": [0.5, 1.2, 0.3]
+        },
+        "injury_status": {
+          "type": "boolean",
+          "description": "Whether athlete has any active pain or injury requiring modification",
+          "examples": [false, true]
+        },
+        "injury_details": {
+          "type": "string",
+          "description": "If injury_status is true, brief description of injury",
+          "examples": [
+            "Left knee patellofemoral pain",
+            "Right achilles tendinopathy",
+            "Lower back strain"
+          ]
+        },
+        "stress_level": {
+          "type": "string",
+          "enum": ["low", "moderate", "high"],
+          "description": "Self-reported non-training life stress over last 7 days"
+        },
+        "stress_details": {
+          "type": "string",
+          "description": "Optional context for stress level",
+          "examples": [
+            "Work project deadline next week",
+            "Family obligations increased",
+            "Normal routine"
+          ]
+        },
+        "weekly_volume_hours": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 40,
+          "description": "Current average weekly training volume in hours",
+          "examples": [10, 15.5, 8]
+        },
+        "volume_consistency_weeks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 52,
+          "description": "Number of consecutive weeks at current volume (indicates base fitness)",
+          "examples": [4, 12, 2]
+        },
+        "resting_heart_rate": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 100,
+          "description": "Average resting heart rate (bpm) over last 7 days",
+          "examples": [52, 45, 58]
+        },
+        "hrv_trend": {
+          "type": "string",
+          "enum": ["increasing", "stable", "decreasing", "unknown"],
+          "description": "Heart rate variability trend over last 14 days",
+          "default": "unknown"
+        },
+        "recent_illness": {
+          "type": "boolean",
+          "description": "Any illness in last 14 days requiring training modification",
+          "default": false
+        },
+        "menstrual_cycle_phase": {
+          "type": "string",
+          "enum": ["follicular", "ovulation", "luteal", "menstruation", "not_applicable"],
+          "description": "Current phase for female athletes (impacts recovery capacity)",
+          "default": "not_applicable"
+        }
+      }
+    },
+    "training_history": {
+      "type": "object",
+      "description": "Historical training context relevant to methodology selection",
+      "properties": {
+        "years_training": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Years of consistent endurance training"
+        },
+        "recent_races": {
+          "type": "array",
+          "description": "Recent race results for fitness estimation",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "distance": {
+                "type": "string",
+                "enum": ["sprint", "olympic", "half_ironman", "ironman", "70.3"]
+              },
+              "finish_time": {
+                "type": "string",
+                "description": "Time in HH:MM:SS format"
+              }
+            }
+          }
+        },
+        "injury_history": {
+          "type": "array",
+          "description": "Previous injuries that may inform methodology selection",
+          "items": {
+            "type": "object",
+            "properties": {
+              "injury_type": {
+                "type": "string"
+              },
+              "date_occurred": {
+                "type": "string",
+                "format": "date"
+              },
+              "resolved": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "goals": {
+      "type": "object",
+      "required": ["primary_goal"],
+      "description": "Training objectives and targets",
+      "properties": {
+        "primary_goal": {
+          "type": "string",
+          "enum": [
+            "race_performance",
+            "base_building",
+            "weight_loss",
+            "general_fitness",
+            "injury_prevention"
+          ],
+          "description": "Main objective for current training block"
+        },
+        "race_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Target race date (if race_performance is primary goal)"
+        },
+        "race_distance": {
+          "type": "string",
+          "enum": ["sprint", "olympic", "half_ironman", "ironman", "70.3", "other"],
+          "description": "Target race distance"
+        },
+        "goal_finish_time": {
+          "type": "string",
+          "description": "Target finish time in HH:MM:SS format (aspirational)",
+          "pattern": "^\\d{1,2}:\\d{2}:\\d{2}$",
+          "examples": ["5:30:00", "12:15:00", "2:45:30"]
+        },
+        "weeks_to_race": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 52,
+          "description": "Number of weeks until target race"
+        },
+        "priority_level": {
+          "type": "string",
+          "enum": ["A", "B", "C"],
+          "description": "Race priority (A = key race, B = important, C = training race)",
+          "default": "B"
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "description": "External limitations on training capacity",
+      "properties": {
+        "available_training_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7,
+          "description": "Days per week available for training",
+          "default": 6
+        },
+        "max_session_duration_hours": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 8,
+          "description": "Longest single session possible due to schedule",
+          "default": 2.5
+        },
+        "equipment_access": {
+          "type": "object",
+          "properties": {
+            "pool_access": {
+              "type": "boolean",
+              "default": true
+            },
+            "bike_trainer": {
+              "type": "boolean",
+              "default": false
+            },
+            "power_meter": {
+              "type": "boolean",
+              "default": false
+            },
+            "heart_rate_monitor": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "environmental_factors": {
+          "type": "object",
+          "properties": {
+            "climate": {
+              "type": "string",
+              "enum": ["hot_humid", "hot_dry", "temperate", "cold", "variable"],
+              "description": "Training environment climate"
+            },
+            "altitude_meters": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5000,
+              "description": "Training altitude in meters above sea level",
+              "default": 0
+            }
+          }
+        }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "description": "User preferences for plan generation (optional)",
+      "properties": {
+        "preferred_intensity_distribution": {
+          "type": "string",
+          "enum": ["polarized", "pyramidal", "threshold", "flexible"],
+          "description": "Preferred training intensity approach"
+        },
+        "long_workout_day": {
+          "type": "string",
+          "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+          "description": "Preferred day for longest workout"
+        },
+        "rest_day": {
+          "type": "string",
+          "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+          "description": "Preferred complete rest day"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional tracking information",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when profile was created"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last profile update"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-form notes about current state"
+        }
+      }
+    }
+  }
+}

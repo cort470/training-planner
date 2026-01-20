@@ -1,0 +1,51 @@
+{
+  "athlete_id": "test_athlete_004",
+  "profile_date": "2026-01-19",
+  "current_state": {
+    "sleep_hours": 5.0,
+    "sleep_consistency": 1.8,
+    "injury_status": false,
+    "stress_level": "high",
+    "stress_details": "Major work deadline next week + family emergency",
+    "weekly_volume_hours": 15.0,
+    "volume_consistency_weeks": 2,
+    "resting_heart_rate": 62,
+    "hrv_trend": "decreasing",
+    "recent_illness": false
+  },
+  "training_history": {
+    "years_training": 1,
+    "recent_races": [],
+    "injury_history": []
+  },
+  "goals": {
+    "primary_goal": "race_performance",
+    "race_date": "2026-08-30",
+    "race_distance": "olympic",
+    "weeks_to_race": 32,
+    "priority_level": "C"
+  },
+  "constraints": {
+    "available_training_days": 7,
+    "max_session_duration_hours": 1.5,
+    "equipment_access": {
+      "pool_access": false,
+      "bike_trainer": false,
+      "power_meter": false,
+      "heart_rate_monitor": true
+    },
+    "environmental_factors": {
+      "climate": "variable",
+      "altitude_meters": 50
+    }
+  },
+  "preferences": {
+    "preferred_intensity_distribution": "flexible",
+    "long_workout_day": "sunday",
+    "rest_day": "monday"
+  },
+  "metadata": {
+    "created_at": "2026-01-19T16:45:00Z",
+    "notes": "Test case: Multiple violations - sleep, stress, insufficient base building (volume_consistency_weeks < 4)"
+  }
+}

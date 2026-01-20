@@ -1,0 +1,362 @@
+# Product Requirements Document (PRD): Human-in-the-Loop Training Planner
+
+**Version:** 3.0  
+**Status:** Implementation-Ready (Claude Code Optimized)  
+**Last Updated:** 2026-01-19
+
+---
+
+## 1. EXECUTIVE SUMMARY
+
+A decision-support tool for serious amateur triathletes that treats training methodologies as explicit models. The system prioritizes interpretability, human agency, and "Alignment-First" logic.
+
+**Key Differentiators:**
+- **Refusal as a Feature:** Stops generation when safety or data gaps are detected
+- **Reasoning Trace:** Shows the "logic chain" from input to output
+- **Fragility Metrics:** Quantifies the risk/robustness of a generated plan
+
+---
+
+## 2. PROBLEM STATEMENT
+
+**2.1 User Problem:** Athletes outsource agency to "black-box" AI, losing understanding of the "why" and the "risks" behind their training.
+
+**2.2 Systemic Problem:** Fitness AI lacks a "Circuit Breaker"—the ability to refuse guidance when context is unsafe or insufficient.
+
+---
+
+## 3. CORE PRODUCT PRINCIPLES
+
+- **Models, Not Truths:** Methodologies are documented hypotheses
+- **Traceability:** Every prescription must point back to an input and a rule
+- **Constructive Refusal:** Refusals must provide a path forward (Reasoning Bridge)
+
+---
+
+## 4. USER FLOW
+
+1. **Methodology Selection** → View Model Card
+2. **Assumption Validation** → Interactive questioning with Reasoning Trace
+3. **Circuit Breaker Check** → Deterministic safety evaluation
+4. **Plan Generation** → Provision of plan with Fragility Score
+5. **Sensitivity Analysis** → "What-if" toggling of assumptions
+
+---
+
+## 5. FUNCTIONAL REQUIREMENTS
+
+### 5.1 Methodology Model Cards (Schema)
+
+- **ID/Name:** (e.g., `polarized_80_20_v1`)
+- **Philosophy:** Core heuristic description
+- **Required_Inputs:** List of mandatory data points
+- **Fragility_Profile:** List of high-sensitivity variables (e.g., Sleep, Stress)
+- **Exclusion_Criteria:** Hard-coded flags for Refusal
+
+### 5.2 Constructive Refusal & Reasoning Bridges
+
+- **Requirement:** System must trigger a "Bridge" when a model's safety threshold is breached
+- **Logic:** `IF (Input.Value violates Model.Assumption) THEN (Refuse + Suggest Alternative or Update)`
+
+### 5.3 Fragility Metrics (F-Score)
+
+- **Definition:** A qualitative/quantitative hybrid score representing plan sensitivity
+- **UI:** Robustness Gauge showing the "safety buffer"
+- **Range:** 0.0 (Robust) to 1.0 (Extremely Fragile)
+
+### 5.4 The Reasoning Trace
+
+- **Requirement:** A log visible to the user documenting every system inference
+- **Example:**
+  ```
+  [User: Sleep < 6hrs] → [Logic: Recovery Reduced] → [Action: Intensity Capped at Zone 3]
+  ```
+
+---
+
+## 6. NON-FUNCTIONAL REQUIREMENTS
+
+- **Tone:** Analytical, clinical, non-motivational
+- **Safety:** Speculative advice is prohibited; refusal is the default for uncertainty
+- **Interpretability:** All outputs must be traceable to the Model Card schema
+
+---
+
+## 7. METRICS FOR EVALUATION
+
+- **Alignment Accuracy:** User can identify the primary risk factor of their plan
+- **Refusal Utility:** User pivots to safer behavior after a system "No"
+
+---
+
+## 8. IMPLEMENTATION DECISIONS (For Claude Code Session)
+
+### MUST DECIDE BEFORE CODING:
+
+- [x] **Input method:** CLI prompts (Phase 1), JSON file import (Phase 2)
+- [x] **Fragility calculation:** Rules-based weighted scoring
+- [x] **Trace format:** Structured JSON with markdown export option
+- [x] **Storage:** Local SQLite for user profiles, JSON files for methodologies
+
+### DEFER TO PHASE 2:
+
+- [ ] External API integration (Strava/TrainingPeaks)
+- [ ] Multi-dimensional fragility visualization
+- [ ] Web interface (FastAPI)
+
+---
+
+## 9. TECHNICAL ARCHITECTURE
+
+### 9.1 Stack Recommendations
+
+- **Backend:** Python 3.10+
+- **Data Storage:** SQLite for user profiles, JSON files for methodology model cards
+- **CLI Interface:** `rich` for formatting, `typer` for interactive prompts
+- **Validation:** `pydantic` for schema validation
+- **Testing:** `pytest` with test fixtures
+- **Optional Web Layer:** FastAPI (Phase 3)
+
+### 9.2 File Structure
+
+```
+training-planner/
+├── README.md
+├── requirements.txt
+├── .gitignore
+├── docs/
+│   ├── PRD.md
+│   ├── SCHEMA.md
+│   └── METHODOLOGY_GUIDE.md
+├── models/
+│   └── polarized_80_20_v1.json
+├── user_profiles/          # gitignored
+│   └── .gitkeep
+├── reasoning_logs/         # gitignored
+│   └── .gitkeep
+├── src/
+│   ├── __init__.py
+│   ├── schemas.py         # Pydantic models
+│   ├── validator.py       # Circuit breaker logic
+│   ├── planner.py         # Core generation
+│   ├── trace.py           # Reasoning trace builder
+│   ├── fragility.py       # F-Score calculator
+│   └── cli.py             # Typer CLI interface
+└── tests/
+    ├── __init__.py
+    ├── test_validator.py
+    ├── test_planner.py
+    ├── test_trace.py
+    └── fixtures/
+        ├── valid_user.json
+        └── invalid_user.json
+```
+
+### 9.3 Development Phases for Claude Code
+
+**Phase 1: Core Validation (MVP)**
+- Implement schema validation for MethodologyModelCard and UserProfile
+- Create reference `polarized_80_20_v1.json` methodology
+- Build circuit breaker logic with safety gates
+- Generate basic reasoning trace for refusal scenarios
+- CLI for user input collection
+
+**Phase 2: Plan Generation**
+- Fragility score calculation algorithm
+- Training plan generation logic
+- Sensitivity analysis ("what-if" scenarios)
+- Enhanced reasoning trace with full decision tree
+
+**Phase 3: Enhancement**
+- Multi-methodology support
+- Historical tracking and trend analysis
+- Optional web interface
+- Data export capabilities
+
+---
+
+## 10. REFERENCE IMPLEMENTATION SCENARIOS
+
+### Scenario A: "Happy Path"
+- **User Profile:**
+  - Age: 35, Sleep: 8hrs avg, No injuries, Stress: Low
+  - Weekly Volume: 10hrs, Race Date: 12 weeks out
+  - Goal: Olympic distance triathlon
+- **Methodology:** `polarized_80_20_v1`
+- **Expected Output:**
+  - 12-week plan generated
+  - F-Score: 0.3 (Robust)
+  - Reasoning Trace: "All assumptions satisfied → Plan generated with standard distribution"
+
+### Scenario B: "Circuit Breaker Triggered"
+- **User Profile:**
+  - Reports: Knee pain (injury_status: true)
+  - Sleep: 5.5hrs avg
+- **Methodology:** ANY
+- **Expected Output:**
+  - **REFUSAL** with Reasoning Bridge:
+    ```
+    Cannot generate training plan:
+    
+    SAFETY GATE TRIGGERED:
+    - Condition: injury_status == true
+    - Violated Assumption: "No active injuries or pain"
+    
+    REASONING:
+    Training under injury conditions risks chronic damage and 
+    compromises recovery capacity required by this methodology.
+    
+    RECOMMENDED PATH FORWARD:
+    1. Seek medical clearance from sports medicine professional
+    2. Return when injury_status == false
+    3. Consider starting with recovery-focused methodology
+    ```
+
+### Scenario C: "Sensitivity Analysis"
+- **User Action:** Toggle assumption: "What if I only get 6.5hrs sleep instead of 8hrs?"
+- **Expected Output:**
+  - Original F-Score: 0.3 → New F-Score: 0.6
+  - Reasoning Trace:
+    ```
+    ASSUMPTION CHANGE DETECTED:
+    - Variable: sleep_hours
+    - Original: 8.0 → New: 6.5
+    - Threshold: 7.0 (minimum for high criticality)
+    
+    IMPACT ANALYSIS:
+    - Recovery capacity: REDUCED
+    - High-intensity session tolerance: DECREASED
+    - Fragility increase: +0.3 (significant)
+    
+    PLAN ADJUSTMENTS:
+    - High-intensity sessions: 3/week → 2/week
+    - Recovery days: 1/week → 2/week
+    - Volume reduction: -15% total hours
+    ```
+
+---
+
+## 11. TEST CASES FOR INITIAL IMPLEMENTATION
+
+### TEST_CASE_001: Valid Input Acceptance
+- **Input:**
+  ```json
+  {
+    "sleep_hours": 8.0,
+    "injury_status": false,
+    "stress_level": "low",
+    "weekly_volume_hours": 10.0
+  }
+  ```
+- **Methodology:** `polarized_80_20_v1`
+- **Expected:** Plan generated, F-Score ≤ 0.5, No circuit breaker triggers
+
+### TEST_CASE_002: Injury Circuit Breaker
+- **Input:**
+  ```json
+  {
+    "sleep_hours": 8.0,
+    "injury_status": true,
+    "stress_level": "low",
+    "weekly_volume_hours": 10.0
+  }
+  ```
+- **Expected:**
+  - REFUSAL status
+  - Reasoning Bridge includes medical clearance recommendation
+  - No plan generated
+
+### TEST_CASE_003: Sleep Threshold Violation
+- **Input:**
+  ```json
+  {
+    "sleep_hours": 5.5,
+    "injury_status": false,
+    "stress_level": "moderate",
+    "weekly_volume_hours": 12.0
+  }
+  ```
+- **Expected:**
+  - REFUSAL status
+  - Reasoning Bridge explains sleep requirement violation
+  - Bridge suggests sleep optimization protocol
+
+### TEST_CASE_004: Multiple Violations (Compounding Risk)
+- **Input:**
+  ```json
+  {
+    "sleep_hours": 5.0,
+    "injury_status": false,
+    "stress_level": "high",
+    "weekly_volume_hours": 15.0
+  }
+  ```
+- **Expected:**
+  - REFUSAL status
+  - Multiple reasoning entries (sleep + stress)
+  - Prioritized recommendations (address sleep first)
+
+### TEST_CASE_005: Boundary Condition (Sleep at Threshold)
+- **Input:**
+  ```json
+  {
+    "sleep_hours": 7.0,
+    "injury_status": false,
+    "stress_level": "low",
+    "weekly_volume_hours": 10.0
+  }
+  ```
+- **Expected:**
+  - Plan generated (threshold is inclusive)
+  - F-Score: 0.4-0.5 (moderate fragility)
+  - Warning note in reasoning trace about minimal buffer
+
+---
+
+## 12. INITIAL CLAUDE CODE SESSION PROMPT
+
+```
+I want to build the training planner from the attached PRD and schema files.
+
+Let's start with Phase 1 (Core Validation MVP):
+
+1. Set up the project structure as defined in section 9.2
+2. Implement Pydantic schemas for MethodologyModelCard and UserProfile
+3. Create the reference polarized_80_20_v1.json methodology file
+4. Build validator.py with circuit breaker logic that:
+   - Validates user input against methodology safety gates
+   - Generates reasoning traces for refusals
+   - Returns structured refusal responses with bridges
+5. Create a simple CLI (cli.py) that:
+   - Collects user input interactively
+   - Loads the polarized methodology
+   - Runs validation and displays results
+6. Write tests for TEST_CASE_001 through TEST_CASE_003
+
+Please start by creating the file structure and then we'll implement 
+each component. Focus on clean, documented code with type hints.
+```
+
+---
+
+## APPENDIX A: Glossary
+
+- **Circuit Breaker:** Safety mechanism that halts plan generation when risk thresholds are exceeded
+- **Reasoning Bridge:** Constructive explanation provided during refusal that guides user toward safer state
+- **Reasoning Trace:** Step-by-step log of system logic from input to decision
+- **Fragility Score (F-Score):** Quantitative measure (0.0-1.0) of plan robustness
+- **Model Card:** Structured documentation of training methodology assumptions and constraints
+- **Sensitivity Factor:** Variable that significantly impacts plan fragility when changed
+
+---
+
+## APPENDIX B: Design Philosophy Notes
+
+This tool is **not** a coach replacement. It is a **transparency layer** that makes training methodology assumptions explicit and checkable. The system succeeds when users understand:
+
+1. **What** their plan assumes about them
+2. **Why** those assumptions matter
+3. **When** the plan becomes unsafe
+4. **How** to return to a safe state
+
+The goal is informed consent, not optimization.

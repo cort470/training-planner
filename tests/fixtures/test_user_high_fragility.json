@@ -1,0 +1,36 @@
+{
+  "athlete_id": "test_athlete_high_fragility",
+  "profile_date": "2026-01-20",
+  "current_state": {
+    "sleep_hours": 6.0,
+    "injury_status": false,
+    "stress_level": "high",
+    "weekly_volume_hours": 15.0,
+    "volume_consistency_weeks": 2,
+    "recent_illness": true,
+    "hrv_trend": "decreasing"
+  },
+  "training_history": {
+    "years_training": 1,
+    "recent_races": []
+  },
+  "goals": {
+    "primary_goal": "race_performance",
+    "race_date": "2026-02-23",
+    "race_distance": "sprint",
+    "weeks_to_race": 5
+  },
+  "constraints": {
+    "available_training_days": 5,
+    "max_session_duration_hours": 2.0
+  },
+  "preferences": {
+    "preferred_intensity_distribution": "polarized",
+    "long_workout_day": "saturday",
+    "rest_day": "tuesday"
+  },
+  "metadata": {
+    "created_at": "2026-01-20T10:00:00Z",
+    "notes": "Test case: High fragility - low sleep (6.0hrs), high stress, recent illness, decreasing HRV, short timeline, insufficient volume consistency"
+  }
+}
