@@ -178,5 +178,72 @@
       "citation": "Kenttä, G., & Hassmén, P. (1998). Overtraining and recovery: A conceptual model. Sports Medicine, 26(1), 1-16.",
       "relevance": "Framework for understanding relationship between training stress, recovery capacity, and overtraining syndrome. Informs safety gates and failure modes."
     }
-  ]
+  ],
+  "intensity_distribution_config": {
+    "low_intensity_target": 0.80,
+    "threshold_intensity_target": 0.0,
+    "high_intensity_target": 0.20,
+    "tolerance_percent": 5.0
+  },
+  "session_type_config": {
+    "hi_workout_templates": [
+      {
+        "session_type": "run",
+        "primary_zone": "zone_4",
+        "workout_description": "VO2max intervals: 6×800m @ Z4 with 2min recovery",
+        "discipline": "run",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "swim",
+        "primary_zone": "zone_4",
+        "workout_description": "Threshold intervals: 8×100m @ Z4 with 90sec rest",
+        "discipline": "swim",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "bike",
+        "primary_zone": "zone_4",
+        "workout_description": "Sweet spot intervals: 4×10min @ Z4 with 3min recovery",
+        "discipline": "bike",
+        "recommended_phases": ["build", "peak"]
+      }
+    ],
+    "rotation_strategy": "round_robin",
+    "max_consecutive_same_type": 1
+  },
+  "phase_distribution_config": {
+    "short_plan_phases": {
+      "base_percent": 0.4,
+      "build_percent": 0.3,
+      "peak_percent": 0.1,
+      "taper_percent": 0.2,
+      "min_base_weeks": 2,
+      "min_build_weeks": 1,
+      "min_peak_weeks": 1,
+      "min_taper_weeks": 1
+    },
+    "medium_plan_phases": {
+      "base_percent": 0.3,
+      "build_percent": 0.45,
+      "peak_percent": 0.15,
+      "taper_percent": 0.1,
+      "min_base_weeks": 3,
+      "min_build_weeks": 4,
+      "min_peak_weeks": 2,
+      "min_taper_weeks": 1
+    },
+    "long_plan_phases": {
+      "base_percent": 0.25,
+      "build_percent": 0.50,
+      "peak_percent": 0.15,
+      "taper_percent": 0.10,
+      "min_base_weeks": 4,
+      "min_build_weeks": 8,
+      "min_peak_weeks": 2,
+      "min_taper_weeks": 2
+    },
+    "volume_consistency_threshold": 4,
+    "base_extension_weeks": 2
+  }
 }

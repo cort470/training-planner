@@ -1,0 +1,260 @@
+{
+  "id": "pyramidal_v1",
+  "name": "Pyramidal Training",
+  "version": "1.0.0",
+  "last_updated": "2026-01-20",
+  "philosophy": {
+    "one_line_description": "77% low-intensity (Zone 1-2), 15% threshold (Zone 3), 8% high-intensity (Zone 4-5) distribution",
+    "core_logic": "Balances aerobic development with moderate threshold work and targeted high-intensity sessions. The pyramidal distribution (most volume at low intensity, moderate at threshold, least at high intensity) mirrors the training patterns observed in many elite endurance athletes. Provides middle ground between polarized and threshold approaches, suitable for athletes who can tolerate some threshold work but want to maintain strong aerobic base.",
+    "metabolic_focus": [
+      "aerobic_base",
+      "lactate_threshold",
+      "vo2max"
+    ]
+  },
+  "assumptions": [
+    {
+      "key": "sleep_hours",
+      "expectation": "Consistent sleep ≥6.5 hours per night (7-day average)",
+      "reasoning_justification": "Pyramidal training includes moderate threshold work requiring adequate recovery. While less demanding than pure threshold training, still needs good sleep for lactate clearance and glycogen replenishment. 6.5+ hours provides minimum recovery capacity.",
+      "criticality": "high",
+      "validation_rule": "user.sleep_hours >= 6.5"
+    },
+    {
+      "key": "injury_status",
+      "expectation": "No active injuries or pain requiring modification",
+      "reasoning_justification": "Pyramidal training includes both threshold and high-intensity work. Training through injury compromises form and risks chronic damage across multiple intensity zones.",
+      "criticality": "high",
+      "validation_rule": "user.injury_status == false"
+    },
+    {
+      "key": "volume_consistency_weeks",
+      "expectation": "Base volume established for 6+ consecutive weeks",
+      "reasoning_justification": "Pyramidal training requires aerobic foundation to support threshold and high-intensity work. Six weeks ensures basic metabolic adaptations while being less restrictive than threshold methodology's 8-week requirement.",
+      "criticality": "high",
+      "validation_rule": "user.volume_consistency_weeks >= 6"
+    },
+    {
+      "key": "stress_level",
+      "expectation": "Non-training stress rated as low or moderate",
+      "reasoning_justification": "Pyramidal training is more forgiving than pure threshold training. Can accommodate moderate life stress due to lower volume of sustained threshold work. High stress still contraindicated due to combined training load.",
+      "criticality": "medium",
+      "validation_rule": "user.stress_level in ['low', 'moderate']"
+    },
+    {
+      "key": "weekly_volume_hours",
+      "expectation": "Current volume between 6-20 hours per week",
+      "reasoning_justification": "Pyramidal training flexible across volume ranges. Below 6hrs, insufficient stimulus for adaptations. Above 20hrs, recovery demands high despite moderate intensity distribution.",
+      "criticality": "medium",
+      "validation_rule": "6.0 <= user.weekly_volume_hours <= 20.0"
+    },
+    {
+      "key": "recent_illness",
+      "expectation": "No recent illness in last 14 days",
+      "reasoning_justification": "Post-viral fatigue impairs both threshold and high-intensity performance. Pyramidal training includes both zones, requiring full recovery from illness.",
+      "criticality": "medium",
+      "validation_rule": "user.recent_illness == false"
+    }
+  ],
+  "safety_gates": {
+    "exclusion_criteria": [
+      {
+        "condition": "injury_status",
+        "threshold": "true",
+        "severity": "blocking",
+        "validation_logic": "IF user.injury_status == true THEN REFUSE",
+        "bridge_action": "Seek evaluation and clearance from sports medicine professional. Return when injury_status == false and you have written clearance to resume training."
+      },
+      {
+        "condition": "sleep_hours",
+        "threshold": "< 6.5",
+        "severity": "blocking",
+        "validation_logic": "IF user.sleep_hours < 6.5 THEN REFUSE",
+        "bridge_action": "Establish consistent sleep routine targeting 7.0+ hours. Pyramidal training requires adequate recovery for threshold and HI work. Address sleep hygiene. Return when 7-day average ≥ 6.5 hours."
+      },
+      {
+        "condition": "volume_consistency_weeks",
+        "threshold": "< 6",
+        "severity": "blocking",
+        "validation_logic": "IF user.volume_consistency_weeks < 6 THEN REFUSE",
+        "bridge_action": "Complete 6 weeks of consistent aerobic base building at current volume before introducing pyramidal training. Focus on Zone 1-2 work. Return when volume_consistency_weeks ≥ 6."
+      },
+      {
+        "condition": "stress_level",
+        "threshold": "== 'high'",
+        "severity": "warning",
+        "validation_logic": "IF user.stress_level == 'high' THEN WARN",
+        "bridge_action": "Reduce life stress to moderate or consider polarized methodology. High stress + pyramidal training = elevated overtraining risk. Pyramidal includes more threshold work than polarized, requiring better stress management."
+      },
+      {
+        "condition": "recent_illness",
+        "threshold": "true",
+        "severity": "blocking",
+        "validation_logic": "IF user.recent_illness == true THEN REFUSE",
+        "bridge_action": "Allow 7-14 days post-symptom resolution before resuming pyramidal training. Start with easy aerobic only. Monitor resting HR. Return when recent_illness == false and resting HR within 5% of baseline."
+      },
+      {
+        "condition": "weekly_volume_hours",
+        "threshold": "< 6.0 OR > 20.0",
+        "severity": "blocking",
+        "validation_logic": "IF user.weekly_volume_hours < 6.0 OR user.weekly_volume_hours > 20.0 THEN REFUSE",
+        "bridge_action": "Adjust weekly volume to 6-20 hour range. If below 6hrs, build volume before pyramidal training. If above 20hrs, reduce to allow quality threshold/HI sessions. Volume and intensity inversely related."
+      }
+    ],
+    "refusal_bridge_template": "⛔ SAFETY GATE TRIGGERED - PLAN GENERATION REFUSED\n\n📋 CONDITION: {condition} {threshold}\n❌ VIOLATED ASSUMPTION: {assumption_expectation}\n\n🔍 REASONING:\n{reasoning_justification}\n\n✅ PATH FORWARD:\n{bridge_action}\n\n⏳ Return to this methodology when the above conditions are satisfied."
+  },
+  "risk_profile": {
+    "fragility_score": 0.5,
+    "sensitivity_factors": [
+      "sleep_consistency",
+      "stress_load",
+      "recovery_between_intensity_sessions",
+      "threshold_session_tolerance",
+      "nutrition_timing"
+    ],
+    "fragility_calculation_weights": {
+      "sleep_deviation": 0.16,
+      "stress_multiplier": 0.13,
+      "volume_variance": 0.11,
+      "intensity_frequency": 0.09,
+      "recovery_quality": 0.11
+    }
+  },
+  "failure_modes": [
+    {
+      "condition": "Difficulty recovering between threshold and high-intensity sessions",
+      "early_warning_signals": [
+        "HRV declining 3+ consecutive days after intensity",
+        "Unable to hit target zones in threshold sessions",
+        "Elevated perceived exertion for same workouts",
+        "Sleep quality degradation after intensity days"
+      ],
+      "mitigation_strategy": "Increase recovery time between threshold and HI sessions to 72+ hours. Reduce threshold session frequency. Consider switching to polarized if persistent recovery issues."
+    },
+    {
+      "condition": "Life stress increases during training block",
+      "early_warning_signals": [
+        "Stress level shifts from low to moderate",
+        "Motivation decline for threshold work",
+        "Increased muscle soreness duration",
+        "Resting HR elevated"
+      ],
+      "mitigation_strategy": "Reduce threshold volume by 30%. Maintain HI sessions at low frequency (1x/week). Focus on quality over quantity. If stress remains elevated, switch to polarized methodology."
+    },
+    {
+      "condition": "Accumulating fatigue from insufficient easy volume",
+      "early_warning_signals": [
+        "Consistent inability to recover between sessions",
+        "Morning HRV below baseline for 5+ days",
+        "Intensity sessions feel harder than usual",
+        "Increased injury risk signals (persistent soreness, stiffness)"
+      ],
+      "mitigation_strategy": "Increase easy aerobic volume percentage to 80-82%. Reduce threshold work to 12-13%. Insert recovery week with 40% volume reduction. Ensure 77/15/8 distribution maintained."
+    }
+  ],
+  "references": [
+    {
+      "citation": "Sellés-Pérez, S., Fernández-Sáez, J., Cejuela, R., & Ferriz-Valero, A. (2019). Training intensity distribution in cyclists and triathletes. International Journal of Sports Medicine, 40(05), 332-339.",
+      "url": "https://doi.org/10.1055/a-0862-0644",
+      "relevance": "Study showing pyramidal TID (77/15/8) effective in Half-Ironman triathletes, providing middle ground between polarized and threshold approaches."
+    },
+    {
+      "citation": "Stöggl, T. L., & Sperlich, B. (2015). The training intensity distribution among well-trained and elite endurance athletes. Frontiers in Physiology, 6, 295.",
+      "url": "https://doi.org/10.3389/fphys.2015.00295",
+      "relevance": "Meta-analysis identifying pyramidal as most common TID pattern in elite endurance athletes across sports, validating its effectiveness for high-level performance."
+    },
+    {
+      "citation": "Muñoz, I., Seiler, S., Bautista, J., España, J., Larumbe, E., & Esteve-Lanao, J. (2014). Does polarized training improve performance in recreational runners? International Journal of Sports Physiology and Performance, 9(2), 265-272.",
+      "url": "https://doi.org/10.1123/ijspp.2012-0350",
+      "relevance": "Comparative study showing pyramidal distribution can be effective for recreational athletes, particularly those with higher training volumes and good stress management."
+    }
+  ],
+  "intensity_distribution_config": {
+    "low_intensity_target": 0.77,
+    "threshold_intensity_target": 0.15,
+    "high_intensity_target": 0.08,
+    "tolerance_percent": 5.0
+  },
+  "session_type_config": {
+    "hi_workout_templates": [
+      {
+        "session_type": "bike",
+        "primary_zone": "zone_3",
+        "workout_description": "Threshold intervals: 2×15min @ Z3 with 5min recovery",
+        "discipline": "bike",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "run",
+        "primary_zone": "zone_3",
+        "workout_description": "Tempo run: 30min continuous @ Z3",
+        "discipline": "run",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "swim",
+        "primary_zone": "zone_3",
+        "workout_description": "Threshold intervals: 4×400m @ Z3 with 60sec rest",
+        "discipline": "swim",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "bike",
+        "primary_zone": "zone_4",
+        "workout_description": "VO2max intervals: 5×4min @ Z4 with 3min recovery",
+        "discipline": "bike",
+        "recommended_phases": ["peak"]
+      },
+      {
+        "session_type": "run",
+        "primary_zone": "zone_4",
+        "workout_description": "Hill repeats: 8×2min uphill @ Z4 with jog down recovery",
+        "discipline": "run",
+        "recommended_phases": ["peak"]
+      },
+      {
+        "session_type": "swim",
+        "primary_zone": "zone_4",
+        "workout_description": "VO2max intervals: 10×100m @ Z4 with 90sec rest",
+        "discipline": "swim",
+        "recommended_phases": ["peak"]
+      }
+    ],
+    "rotation_strategy": "phase_specific",
+    "max_consecutive_same_type": 2
+  },
+  "phase_distribution_config": {
+    "short_plan_phases": {
+      "base_percent": 0.40,
+      "build_percent": 0.35,
+      "peak_percent": 0.10,
+      "taper_percent": 0.15,
+      "min_base_weeks": 2,
+      "min_build_weeks": 2,
+      "min_peak_weeks": 1,
+      "min_taper_weeks": 1
+    },
+    "medium_plan_phases": {
+      "base_percent": 0.30,
+      "build_percent": 0.45,
+      "peak_percent": 0.15,
+      "taper_percent": 0.10,
+      "min_base_weeks": 3,
+      "min_build_weeks": 5,
+      "min_peak_weeks": 2,
+      "min_taper_weeks": 1
+    },
+    "long_plan_phases": {
+      "base_percent": 0.25,
+      "build_percent": 0.50,
+      "peak_percent": 0.15,
+      "taper_percent": 0.10,
+      "min_base_weeks": 4,
+      "min_build_weeks": 8,
+      "min_peak_weeks": 2,
+      "min_taper_weeks": 2
+    },
+    "volume_consistency_threshold": 6,
+    "base_extension_weeks": 2
+  }
+}

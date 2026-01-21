@@ -169,6 +169,82 @@ def test_intensity_distribution_80_20(methodology, validator, valid_user_12_week
     assert intensity_dist.threshold_percent <= 5.0
 
 
+def test_intensity_distribution_threshold_70_20_10():
+    """Test that Threshold methodology follows 70/20/10 intensity distribution."""
+    # Load Threshold methodology
+    methodology_path = Path("models/methodology_threshold_70_20_10_v1.json")
+    with open(methodology_path) as f:
+        data = json.load(f)
+    threshold_methodology = MethodologyModelCard(**data)
+
+    # Load threshold user fixture
+    profile_path = Path("tests/fixtures/test_user_threshold_12_week.json")
+    with open(profile_path) as f:
+        user_data = json.load(f)
+    threshold_user = UserProfile(**user_data)
+
+    # Validate and generate plan
+    validator = MethodologyValidator(threshold_methodology)
+    validation_result = validator.validate(threshold_user)
+    assert validation_result.approved, "Threshold user should pass validation"
+
+    generator = TrainingPlanGenerator(threshold_methodology, validation_result)
+    plan = generator.generate(threshold_user)
+
+    intensity_dist = plan.calculate_intensity_distribution()
+
+    # 70/20/10 threshold: 70% low, 20% threshold (Z3), 10% high
+    # Allow ±10% tolerance due to discrete session constraints and fragility adjustments
+    assert intensity_dist.low_intensity_percent >= 60.0
+    assert intensity_dist.low_intensity_percent <= 80.0
+
+    # Z3 + Z4 combined should be 30% (±10% tolerance)
+    combined_intensity = intensity_dist.threshold_percent + intensity_dist.high_intensity_percent
+    assert combined_intensity >= 20.0
+    assert combined_intensity <= 40.0
+
+    # Z3 should be present (at least 10%)
+    assert intensity_dist.threshold_percent >= 10.0
+
+
+def test_intensity_distribution_pyramidal():
+    """Test that Pyramidal methodology follows 77/15/8 intensity distribution."""
+    # Load Pyramidal methodology
+    methodology_path = Path("models/methodology_pyramidal_v1.json")
+    with open(methodology_path) as f:
+        data = json.load(f)
+    pyramidal_methodology = MethodologyModelCard(**data)
+
+    # Load pyramidal user fixture
+    profile_path = Path("tests/fixtures/test_user_pyramidal_12_week.json")
+    with open(profile_path) as f:
+        user_data = json.load(f)
+    pyramidal_user = UserProfile(**user_data)
+
+    # Validate and generate plan
+    validator = MethodologyValidator(pyramidal_methodology)
+    validation_result = validator.validate(pyramidal_user)
+    assert validation_result.approved, "Pyramidal user should pass validation"
+
+    generator = TrainingPlanGenerator(pyramidal_methodology, validation_result)
+    plan = generator.generate(pyramidal_user)
+
+    intensity_dist = plan.calculate_intensity_distribution()
+
+    # 77/15/8 pyramidal: 77% low, 15% threshold (Z3), 8% high
+    # Allow ±10% tolerance due to discrete session constraints and fragility adjustments
+    assert intensity_dist.low_intensity_percent >= 67.0
+    assert intensity_dist.low_intensity_percent <= 87.0
+
+    # Z3 + Z4 combined should be 23% (±10% tolerance)
+    combined_intensity = intensity_dist.threshold_percent + intensity_dist.high_intensity_percent
+    assert combined_intensity >= 13.0
+    assert combined_intensity <= 33.0
+
+    # Z3 should be present (at least 8%)
+    assert intensity_dist.threshold_percent >= 8.0
+
+
 def test_fragility_reduces_hi_frequency_high(methodology, validator, high_fragility_user):
     """Test that high fragility reduces HI session frequency."""
     validation_result = validator.validate(high_fragility_user)
@@ -216,6 +292,98 @@ def test_fragility_normal_hi_frequency_low(methodology, validator, valid_user_12
 
         # Low fragility should have 2-3 HI sessions
         assert len(hi_sessions) >= 2
+
+
+def test_threshold_session_types():
+    """Test that Threshold methodology includes Zone 3 threshold workouts."""
+    # Load Threshold methodology
+    methodology_path = Path("models/methodology_threshold_70_20_10_v1.json")
+    with open(methodology_path) as f:
+        data = json.load(f)
+    threshold_methodology = MethodologyModelCard(**data)
+
+    # Load threshold user fixture
+    profile_path = Path("tests/fixtures/test_user_threshold_12_week.json")
+    with open(profile_path) as f:
+        user_data = json.load(f)
+    threshold_user = UserProfile(**user_data)
+
+    # Validate and generate plan
+    validator = MethodologyValidator(threshold_methodology)
+    validation_result = validator.validate(threshold_user)
+    generator = TrainingPlanGenerator(threshold_methodology, validation_result)
+    plan = generator.generate(threshold_user)
+
+    # Check build/peak weeks for Z3 threshold sessions
+    intensity_weeks = [w for w in plan.weeks if w.phase in [TrainingPhase.BUILD, TrainingPhase.PEAK]]
+
+    # Should have Z3 (threshold) sessions in at least some build/peak weeks
+    z3_session_count = 0
+    for week in intensity_weeks:
+        z3_sessions = [s for s in week.sessions if s.primary_zone == IntensityZone.ZONE_3]
+        z3_session_count += len(z3_sessions)
+
+    # Threshold methodology should have significant Z3 work (at least 20% of sessions in build/peak)
+    total_intensity_sessions = sum(len(week.sessions) for week in intensity_weeks)
+    z3_percentage = (z3_session_count / total_intensity_sessions) * 100 if total_intensity_sessions > 0 else 0
+
+    assert z3_percentage >= 15.0, f"Threshold methodology should have ≥15% Z3 sessions in build/peak, got {z3_percentage:.1f}%"
+
+    # Verify some session descriptions mention "threshold" or "tempo"
+    z3_descriptions = []
+    for week in intensity_weeks:
+        for session in week.sessions:
+            if session.primary_zone == IntensityZone.ZONE_3:
+                z3_descriptions.append(session.description.lower())
+
+    assert any("threshold" in desc or "tempo" in desc for desc in z3_descriptions), \
+        "Z3 sessions should mention 'threshold' or 'tempo' in description"
+
+
+def test_pyramidal_session_types():
+    """Test that Pyramidal methodology includes balanced Z3 and Z4 workouts."""
+    # Load Pyramidal methodology
+    methodology_path = Path("models/methodology_pyramidal_v1.json")
+    with open(methodology_path) as f:
+        data = json.load(f)
+    pyramidal_methodology = MethodologyModelCard(**data)
+
+    # Load pyramidal user fixture
+    profile_path = Path("tests/fixtures/test_user_pyramidal_12_week.json")
+    with open(profile_path) as f:
+        user_data = json.load(f)
+    pyramidal_user = UserProfile(**user_data)
+
+    # Validate and generate plan
+    validator = MethodologyValidator(pyramidal_methodology)
+    validation_result = validator.validate(pyramidal_user)
+    generator = TrainingPlanGenerator(pyramidal_methodology, validation_result)
+    plan = generator.generate(pyramidal_user)
+
+    # Check build/peak weeks for balanced Z3 and Z4 distribution
+    intensity_weeks = [w for w in plan.weeks if w.phase in [TrainingPhase.BUILD, TrainingPhase.PEAK]]
+
+    z3_session_count = 0
+    z4_session_count = 0
+
+    for week in intensity_weeks:
+        z3_sessions = [s for s in week.sessions if s.primary_zone == IntensityZone.ZONE_3]
+        z4_sessions = [s for s in week.sessions if s.primary_zone in [IntensityZone.ZONE_4, IntensityZone.ZONE_5]]
+        z3_session_count += len(z3_sessions)
+        z4_session_count += len(z4_sessions)
+
+    # Pyramidal should have both Z3 and Z4 work
+    assert z3_session_count > 0, "Pyramidal should include Z3 threshold sessions"
+    assert z4_session_count > 0, "Pyramidal should include Z4 high-intensity sessions"
+
+    # Z3 should be more frequent than Z4 (pyramidal pattern: more threshold than VO2max)
+    # Ratio should be approximately 15% Z3 vs 8% Z4 (roughly 2:1)
+    # With discrete sessions, exact ratios may vary based on fragility and total session count
+    total_intensity_sessions = z3_session_count + z4_session_count
+    z3_percentage = (z3_session_count / total_intensity_sessions) * 100 if total_intensity_sessions > 0 else 0
+
+    # Z3 should dominate (at least 50% of intensity sessions)
+    assert z3_percentage >= 50.0, f"Pyramidal should have ≥50% Z3 sessions among intensity work, got {z3_percentage:.1f}%"
 
 
 def test_weekly_volume_matches_profile(methodology, validator, valid_user_12_week):
@@ -454,3 +622,61 @@ def test_plan_creation_timestamp(methodology, validator, valid_user_12_week):
     from datetime import datetime, timedelta
 
     assert plan.created_at >= datetime.utcnow() - timedelta(minutes=1)
+
+
+def test_methodology_without_configs_fails():
+    """Test that methodologies missing required configs fail validation (breaking change)."""
+    from pydantic import ValidationError
+
+    # Create a methodology JSON without required config sections
+    incomplete_methodology = {
+        "id": "test_incomplete",
+        "name": "Incomplete Methodology",
+        "version": "1.0.0",
+        "last_updated": "2026-01-20",
+        "philosophy": {
+            "one_line_description": "Test methodology without configs",
+            "core_logic": "This should fail validation",
+            "metabolic_focus": ["aerobic_base"]
+        },
+        "assumptions": [
+            {
+                "key": "sleep_hours",
+                "expectation": "≥7.0 hours",
+                "reasoning_justification": "Test assumption",
+                "criticality": "high",
+                "validation_rule": "user.sleep_hours >= 7.0"
+            }
+        ],
+        "safety_gates": {
+            "exclusion_criteria": [],
+            "refusal_bridge_template": "Test template"
+        },
+        "risk_profile": {
+            "fragility_score": 0.5,
+            "sensitivity_factors": ["sleep_consistency"],
+            "fragility_calculation_weights": {
+                "sleep_deviation": 0.2,
+                "stress_multiplier": 0.2,
+                "volume_variance": 0.2,
+                "intensity_frequency": 0.2,
+                "recovery_quality": 0.2
+            }
+        },
+        "failure_modes": [],
+        "references": []
+        # MISSING: intensity_distribution_config
+        # MISSING: session_type_config
+        # MISSING: phase_distribution_config
+    }
+
+    # This should raise ValidationError due to missing required fields
+    with pytest.raises(ValidationError) as exc_info:
+        MethodologyModelCard(**incomplete_methodology)
+
+    # Verify the error mentions the missing fields
+    error_message = str(exc_info.value)
+    assert "intensity_distribution_config" in error_message or \
+           "session_type_config" in error_message or \
+           "phase_distribution_config" in error_message, \
+           "ValidationError should mention missing config fields"

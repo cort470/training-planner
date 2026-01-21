@@ -1,0 +1,44 @@
+{
+  "athlete_id": "test_athlete_pyramidal",
+  "profile_date": "2026-01-20",
+  "current_state": {
+    "sleep_hours": 7.5,
+    "sleep_consistency": 0.7,
+    "injury_status": false,
+    "stress_level": "low",
+    "weekly_volume_hours": 10.0,
+    "volume_consistency_weeks": 6,
+    "recent_illness": false,
+    "hrv_trend": "stable",
+    "current_fitness_level": "intermediate"
+  },
+  "training_history": {
+    "years_training": 2,
+    "longest_run_km": 20,
+    "longest_ride_km": 80,
+    "longest_swim_meters": 2500
+  },
+  "goals": {
+    "primary_goal": "race_performance",
+    "race_date": "2026-04-20",
+    "race_distance": "olympic",
+    "weeks_to_race": 12,
+    "target_finish_time_minutes": 165
+  },
+  "constraints": {
+    "available_training_days": 5,
+    "max_session_duration_hours": 2.0,
+    "equipment_access": {
+      "pool_access": true,
+      "bike_trainer": false,
+      "power_meter": false,
+      "heart_rate_monitor": true
+    }
+  },
+  "preferences": {
+    "preferred_intensity_distribution": "pyramidal",
+    "long_workout_day": "saturday",
+    "rest_day": "sunday",
+    "preferred_training_time": "evening"
+  }
+}

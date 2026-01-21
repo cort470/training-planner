@@ -1,0 +1,269 @@
+{
+  "id": "threshold_70_20_10_v1",
+  "name": "Threshold 70/20/10 Training",
+  "version": "1.0.0",
+  "last_updated": "2026-01-20",
+  "philosophy": {
+    "one_line_description": "70% low-intensity (Zone 1-2), 20% threshold (Zone 3), 10% high-intensity (Zone 4-5) distribution",
+    "core_logic": "Emphasizes threshold/tempo work (Zone 3) to build lactate tolerance and functional threshold power/pace. This methodology targets the metabolic transition zone more directly than polarized training, requiring stronger recovery capacity and stress tolerance. Suitable for athletes with established aerobic base and low life stress.",
+    "metabolic_focus": [
+      "lactate_threshold",
+      "vo2max",
+      "aerobic_base"
+    ]
+  },
+  "assumptions": [
+    {
+      "key": "sleep_hours",
+      "expectation": "Consistent sleep ≥7.0 hours per night (7-day average)",
+      "reasoning_justification": "Threshold training creates significant metabolic stress through sustained efforts near lactate threshold. Requires robust recovery capacity for glycogen replenishment, neuromuscular recovery, and hormonal balance. Insufficient sleep impairs lactate clearance and increases injury risk.",
+      "criticality": "high",
+      "validation_rule": "user.sleep_hours >= 7.0"
+    },
+    {
+      "key": "injury_status",
+      "expectation": "No active injuries or pain requiring modification",
+      "reasoning_justification": "Threshold training involves sustained efforts near maximum sustainable pace, placing consistent stress on musculoskeletal system. Training through injury risks chronic damage and compensatory movement patterns.",
+      "criticality": "high",
+      "validation_rule": "user.injury_status == false"
+    },
+    {
+      "key": "volume_consistency_weeks",
+      "expectation": "Base volume established for 8+ consecutive weeks",
+      "reasoning_justification": "Threshold training requires stronger aerobic foundation than polarized training due to higher sustained intensity. Premature threshold work without adequate base leads to overtraining and incomplete recovery between sessions. Eight weeks ensures metabolic adaptations to support threshold efforts.",
+      "criticality": "high",
+      "validation_rule": "user.volume_consistency_weeks >= 8"
+    },
+    {
+      "key": "stress_level",
+      "expectation": "Non-training stress rated as low",
+      "reasoning_justification": "Threshold training is more physiologically demanding than polarized training due to sustained Zone 3 efforts. High or even moderate life stress combined with threshold training creates excessive total stress load, increasing overtraining risk. Only athletes with low life stress should pursue threshold methodology.",
+      "criticality": "high",
+      "validation_rule": "user.stress_level == 'low'"
+    },
+    {
+      "key": "weekly_volume_hours",
+      "expectation": "Current volume between 8-20 hours per week",
+      "reasoning_justification": "Threshold training requires sufficient volume to build aerobic capacity while avoiding excessive fatigue that compromises threshold session quality. Below 8hrs, insufficient stimulus. Above 20hrs, recovery demands too high for sustained threshold work.",
+      "criticality": "medium",
+      "validation_rule": "8.0 <= user.weekly_volume_hours <= 20.0"
+    },
+    {
+      "key": "recent_illness",
+      "expectation": "No recent illness in last 14 days",
+      "reasoning_justification": "Post-viral fatigue significantly impairs lactate clearance and threshold performance. Threshold training too soon after illness increases cardiac risk and delays full recovery.",
+      "criticality": "medium",
+      "validation_rule": "user.recent_illness == false"
+    },
+    {
+      "key": "training_experience_years",
+      "expectation": "At least 2 years of consistent endurance training",
+      "reasoning_justification": "Threshold training requires developed sense of pacing and effort control. Athletes with <2 years experience lack metabolic adaptations and body awareness to execute threshold sessions safely and effectively.",
+      "criticality": "medium",
+      "validation_rule": "user.training_history.years_training >= 2"
+    }
+  ],
+  "safety_gates": {
+    "exclusion_criteria": [
+      {
+        "condition": "injury_status",
+        "threshold": "true",
+        "severity": "blocking",
+        "validation_logic": "IF user.injury_status == true THEN REFUSE",
+        "bridge_action": "Seek evaluation and clearance from sports medicine professional. Threshold training not appropriate during active injury. Return when injury_status == false and you have written clearance."
+      },
+      {
+        "condition": "sleep_hours",
+        "threshold": "< 7.0",
+        "severity": "blocking",
+        "validation_logic": "IF user.sleep_hours < 7.0 THEN REFUSE",
+        "bridge_action": "Establish consistent sleep routine targeting 7.5+ hours. Threshold training requires robust recovery capacity. Address sleep hygiene and consider sleep tracking. Return when 7-day average ≥ 7.0 hours."
+      },
+      {
+        "condition": "volume_consistency_weeks",
+        "threshold": "< 8",
+        "severity": "blocking",
+        "validation_logic": "IF user.volume_consistency_weeks < 8 THEN REFUSE",
+        "bridge_action": "Complete 8 weeks of consistent aerobic base building at current volume before introducing threshold work. Focus on Zone 1-2 only. Threshold training requires stronger base than polarized training. Return when volume_consistency_weeks ≥ 8."
+      },
+      {
+        "condition": "stress_level",
+        "threshold": "!= 'low'",
+        "severity": "blocking",
+        "validation_logic": "IF user.stress_level != 'low' THEN REFUSE",
+        "bridge_action": "Reduce life stress to low level before pursuing threshold training. Consider polarized or pyramidal methodology instead, which tolerate moderate stress better. Threshold training + moderate/high stress = overtraining risk."
+      },
+      {
+        "condition": "recent_illness",
+        "threshold": "true",
+        "severity": "blocking",
+        "validation_logic": "IF user.recent_illness == true THEN REFUSE",
+        "bridge_action": "Allow 14+ days post-symptom resolution before resuming threshold training. Start with easy aerobic sessions only. Monitor resting heart rate and perceived exertion. Return when recent_illness == false and resting HR within 5% of baseline."
+      },
+      {
+        "condition": "weekly_volume_hours",
+        "threshold": "< 8.0 OR > 20.0",
+        "severity": "blocking",
+        "validation_logic": "IF user.weekly_volume_hours < 8.0 OR user.weekly_volume_hours > 20.0 THEN REFUSE",
+        "bridge_action": "Adjust weekly volume to 8-20 hour range. If below 8hrs, build volume before introducing threshold work. If above 20hrs, reduce volume to allow quality threshold sessions. High volume + threshold intensity = excessive fatigue."
+      },
+      {
+        "condition": "training_experience_years",
+        "threshold": "< 2",
+        "severity": "warning",
+        "validation_logic": "IF user.training_history.years_training < 2 THEN WARN",
+        "bridge_action": "Consider polarized methodology instead if <2 years experience. Threshold training requires developed pacing sense and effort control. Build experience with polarized training first, then transition to threshold if desired."
+      }
+    ],
+    "refusal_bridge_template": "⛔ SAFETY GATE TRIGGERED - PLAN GENERATION REFUSED\n\n📋 CONDITION: {condition} {threshold}\n❌ VIOLATED ASSUMPTION: {assumption_expectation}\n\n🔍 REASONING:\n{reasoning_justification}\n\n✅ PATH FORWARD:\n{bridge_action}\n\n⏳ Return to this methodology when the above conditions are satisfied."
+  },
+  "risk_profile": {
+    "fragility_score": 0.6,
+    "sensitivity_factors": [
+      "sleep_consistency",
+      "stress_load",
+      "threshold_session_recovery",
+      "lactate_clearance_capacity",
+      "glycogen_management",
+      "illness_exposure"
+    ],
+    "fragility_calculation_weights": {
+      "sleep_deviation": 0.18,
+      "stress_multiplier": 0.15,
+      "volume_variance": 0.12,
+      "intensity_frequency": 0.10,
+      "recovery_quality": 0.12
+    }
+  },
+  "failure_modes": [
+    {
+      "condition": "Inability to maintain threshold pace in Zone 3 sessions",
+      "early_warning_signals": [
+        "Heart rate drift during threshold efforts",
+        "Inability to sustain target power/pace for full intervals",
+        "Elevated perceived exertion for same workout",
+        "Extended recovery time between threshold sessions"
+      ],
+      "mitigation_strategy": "Reduce threshold session frequency to 1x/week. Insert full recovery week with 40% volume reduction. Re-test functional threshold power/pace. Consider switching to polarized methodology if persistent."
+    },
+    {
+      "condition": "Accumulating fatigue from insufficient recovery between threshold sessions",
+      "early_warning_signals": [
+        "HRV trending downward for 5+ days",
+        "Morning resting HR elevated >5bpm",
+        "Persistent muscle soreness beyond 48hrs",
+        "Sleep quality degradation",
+        "Motivation decline for threshold workouts"
+      ],
+      "mitigation_strategy": "Immediately reduce threshold sessions to 1x/week. Insert 5-7 day recovery block with easy aerobic only. Increase easy aerobic volume if needed. Do not resume 2x/week threshold until HRV and resting HR normalize."
+    },
+    {
+      "condition": "Life stress increases during threshold training block",
+      "early_warning_signals": [
+        "Stress level shifts from low to moderate",
+        "Sleep quality decreases",
+        "Threshold sessions feel harder than usual",
+        "Increased illness susceptibility"
+      ],
+      "mitigation_strategy": "Switch to polarized methodology immediately. Threshold training incompatible with moderate/high life stress. Reduce threshold sessions to zero until stress returns to low. Consider this a hard stop for threshold work."
+    }
+  ],
+  "references": [
+    {
+      "citation": "Esteve-Lanao, J., San Juan, A. F., Earnest, C. P., Foster, C., & Lucia, A. (2005). How do endurance runners actually train? Relationship with competition performance. Medicine & Science in Sports & Exercise, 37(3), 496-504.",
+      "url": "https://doi.org/10.1249/01.mss.0000155393.78744.86",
+      "relevance": "Comparative study showing threshold-based training can be effective but requires careful load management to avoid overtraining compared to polarized approach."
+    },
+    {
+      "citation": "Seiler, S. (2010). What is best practice for training intensity and duration distribution in endurance athletes? International Journal of Sports Physiology and Performance, 5(3), 276-291.",
+      "url": "https://doi.org/10.1123/ijspp.5.3.276",
+      "relevance": "Analysis of threshold training limitations including higher overtraining risk and need for stronger recovery protocols compared to polarized training."
+    },
+    {
+      "citation": "Stöggl, T. L., & Sperlich, B. (2015). The training intensity distribution among well-trained and elite endurance athletes. Frontiers in Physiology, 6, 295.",
+      "url": "https://doi.org/10.3389/fphys.2015.00295",
+      "relevance": "Meta-analysis showing threshold-focused TID used by some elite athletes but requires established base and low external stress to execute safely."
+    }
+  ],
+  "intensity_distribution_config": {
+    "low_intensity_target": 0.70,
+    "threshold_intensity_target": 0.20,
+    "high_intensity_target": 0.10,
+    "tolerance_percent": 5.0
+  },
+  "session_type_config": {
+    "hi_workout_templates": [
+      {
+        "session_type": "bike",
+        "primary_zone": "zone_3",
+        "workout_description": "Threshold intervals: 3×20min @ Z3 with 5min recovery",
+        "discipline": "bike",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "run",
+        "primary_zone": "zone_3",
+        "workout_description": "Tempo run: 40min continuous @ Z3",
+        "discipline": "run",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "swim",
+        "primary_zone": "zone_3",
+        "workout_description": "Threshold intervals: 5×400m @ Z3 with 60sec rest",
+        "discipline": "swim",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "bike",
+        "primary_zone": "zone_4",
+        "workout_description": "VO2max intervals: 5×5min @ Z4 with 3min recovery",
+        "discipline": "bike",
+        "recommended_phases": ["peak"]
+      },
+      {
+        "session_type": "run",
+        "primary_zone": "zone_4",
+        "workout_description": "VO2max intervals: 6×3min @ Z4 with 3min recovery",
+        "discipline": "run",
+        "recommended_phases": ["peak"]
+      }
+    ],
+    "rotation_strategy": "phase_specific",
+    "max_consecutive_same_type": 2
+  },
+  "phase_distribution_config": {
+    "short_plan_phases": {
+      "base_percent": 0.45,
+      "build_percent": 0.30,
+      "peak_percent": 0.10,
+      "taper_percent": 0.15,
+      "min_base_weeks": 3,
+      "min_build_weeks": 1,
+      "min_peak_weeks": 1,
+      "min_taper_weeks": 1
+    },
+    "medium_plan_phases": {
+      "base_percent": 0.35,
+      "build_percent": 0.40,
+      "peak_percent": 0.15,
+      "taper_percent": 0.10,
+      "min_base_weeks": 4,
+      "min_build_weeks": 4,
+      "min_peak_weeks": 2,
+      "min_taper_weeks": 1
+    },
+    "long_plan_phases": {
+      "base_percent": 0.30,
+      "build_percent": 0.45,
+      "peak_percent": 0.15,
+      "taper_percent": 0.10,
+      "min_base_weeks": 5,
+      "min_build_weeks": 7,
+      "min_peak_weeks": 2,
+      "min_taper_weeks": 2
+    },
+    "volume_consistency_threshold": 8,
+    "base_extension_weeks": 2
+  }
+}

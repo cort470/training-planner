@@ -8,7 +8,7 @@ This module creates structured multi-week training plans based on:
 """
 
 from datetime import date
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from src.fragility import FragilityCalculator
 from src.plan_schemas import (
@@ -128,12 +128,10 @@ class TrainingPlanGenerator:
         self, weeks_to_race: int, user_profile: UserProfile
     ) -> Dict[str, int]:
         """
-        Determine the duration of each training phase.
+        Determine the duration of each training phase from methodology configuration.
 
-        Phases are allocated based on timeline:
-        - 4-6 weeks: 40% base, 30% build, 10% peak, 20% taper
-        - 8-12 weeks: 30% base, 45% build, 15% peak, 10% taper
-        - 16+ weeks: 25% base, 50% build, 15% peak, 10% taper
+        Phases are allocated based on methodology's phase_distribution_config.
+        Configuration varies by plan length (short/medium/long).
 
         Args:
             weeks_to_race: Total weeks until race
@@ -142,31 +140,36 @@ class TrainingPlanGenerator:
         Returns:
             Dictionary mapping phase names to week counts
         """
-        if weeks_to_race <= 6:
-            # Short timeline: focus on maintaining fitness with controlled intensity
-            base_weeks = max(2, int(weeks_to_race * 0.4))
-            build_weeks = max(1, int(weeks_to_race * 0.3))
-            peak_weeks = max(1, int(weeks_to_race * 0.1))
-            taper_weeks = max(1, int(weeks_to_race * 0.2))
-        elif weeks_to_race <= 12:
-            # Standard timeline: balanced progression
-            base_weeks = max(3, int(weeks_to_race * 0.3))
-            build_weeks = max(4, int(weeks_to_race * 0.45))
-            peak_weeks = max(2, int(weeks_to_race * 0.15))
-            taper_weeks = max(1, int(weeks_to_race * 0.1))
-        else:
-            # Long timeline: extended base and build
-            base_weeks = max(4, int(weeks_to_race * 0.25))
-            build_weeks = max(8, int(weeks_to_race * 0.50))
-            peak_weeks = max(2, int(weeks_to_race * 0.15))
-            taper_weeks = max(2, int(weeks_to_race * 0.10))
+        # Get phase percentages from methodology configuration
+        phase_config = self._get_phase_percentages(weeks_to_race)
 
-        # Adjust for volume consistency
+        # Calculate phase weeks based on configured percentages
+        base_weeks = max(
+            phase_config["min_base_weeks"],
+            int(weeks_to_race * phase_config["base_percent"])
+        )
+        build_weeks = max(
+            phase_config["min_build_weeks"],
+            int(weeks_to_race * phase_config["build_percent"])
+        )
+        peak_weeks = max(
+            phase_config["min_peak_weeks"],
+            int(weeks_to_race * phase_config["peak_percent"])
+        )
+        taper_weeks = max(
+            phase_config["min_taper_weeks"],
+            int(weeks_to_race * phase_config["taper_percent"])
+        )
+
+        # Adjust for volume consistency using methodology configuration
         volume_consistency = user_profile.current_state.volume_consistency_weeks
-        if volume_consistency < 4:
-            # Insufficient base, extend base phase by 1-2 weeks
-            base_weeks += 2
-            build_weeks = max(1, build_weeks - 2)
+        consistency_threshold = self.methodology.phase_distribution_config.volume_consistency_threshold
+        extension_weeks = self.methodology.phase_distribution_config.base_extension_weeks
+
+        if volume_consistency < consistency_threshold:
+            # Insufficient base, extend base phase
+            base_weeks += extension_weeks
+            build_weeks = max(1, build_weeks - extension_weeks)
 
         # Ensure total matches weeks_to_race
         total_assigned = base_weeks + build_weeks + peak_weeks + taper_weeks
@@ -277,6 +280,124 @@ class TrainingPlanGenerator:
         )
 
         return hi_frequency
+
+    def _get_phase_percentages(self, weeks_to_race: int) -> Dict[str, float]:
+        """
+        Get phase distribution percentages from methodology configuration.
+
+        Args:
+            weeks_to_race: Number of weeks until race
+
+        Returns:
+            Dict with base_percent, build_percent, peak_percent, taper_percent,
+            and minimum weeks for each phase
+        """
+        config = self.methodology.phase_distribution_config
+
+        # Select configuration based on plan length
+        if weeks_to_race <= 6:
+            phase_config = config.short_plan_phases
+        elif weeks_to_race <= 12:
+            phase_config = config.medium_plan_phases
+        else:
+            phase_config = config.long_plan_phases
+
+        return {
+            "base_percent": phase_config.base_percent,
+            "build_percent": phase_config.build_percent,
+            "peak_percent": phase_config.peak_percent,
+            "taper_percent": phase_config.taper_percent,
+            "min_base_weeks": phase_config.min_base_weeks,
+            "min_build_weeks": phase_config.min_build_weeks,
+            "min_peak_weeks": phase_config.min_peak_weeks,
+            "min_taper_weeks": phase_config.min_taper_weeks,
+        }
+
+    def _get_intensity_targets(self, week_volume_minutes: float) -> tuple[float, float, float]:
+        """
+        Calculate target minutes for each intensity zone from methodology configuration.
+
+        Args:
+            week_volume_minutes: Total weekly training volume in minutes
+
+        Returns:
+            Tuple of (low_intensity_minutes, threshold_intensity_minutes, high_intensity_minutes)
+        """
+        config = self.methodology.intensity_distribution_config
+
+        low_intensity_target = week_volume_minutes * config.low_intensity_target
+        threshold_intensity_target = week_volume_minutes * config.threshold_intensity_target
+        high_intensity_target = week_volume_minutes * config.high_intensity_target
+
+        return (low_intensity_target, threshold_intensity_target, high_intensity_target)
+
+    def _get_hi_workout_template(self, session_index: int, phase: TrainingPhase, hi_sessions_per_week: int) -> Dict[str, Any]:
+        """
+        Get high-intensity workout template from methodology configuration.
+
+        Selects templates weighted by the methodology's intensity distribution targets
+        to ensure proper Z3/Z4 balance.
+
+        Args:
+            session_index: Index of HI session (for rotation)
+            phase: Current training phase
+            hi_sessions_per_week: Total HI sessions per week
+
+        Returns:
+            Dict with session_type, primary_zone, workout_description
+        """
+        config = self.methodology.session_type_config
+        templates = config.hi_workout_templates
+
+        # Filter templates appropriate for current phase if using phase_specific strategy
+        if config.rotation_strategy == "phase_specific":
+            phase_templates = [
+                t for t in templates if phase.value in t.recommended_phases
+            ]
+            if phase_templates:
+                templates = phase_templates
+
+        # Calculate target number of Z3 vs Z4 sessions based on intensity distribution
+        intensity_config = self.methodology.intensity_distribution_config
+        threshold_target = intensity_config.threshold_intensity_target
+        high_target = intensity_config.high_intensity_target
+
+        # If both threshold and high intensity exist, allocate proportionally
+        if threshold_target > 0 and high_target > 0:
+            total_intensity = threshold_target + high_target
+            # Calculate how many sessions should be Z3 vs Z4
+            z3_sessions_target = round((threshold_target / total_intensity) * hi_sessions_per_week)
+            z4_sessions_target = hi_sessions_per_week - z3_sessions_target
+
+            # Separate templates by zone
+            z3_templates = [t for t in templates if t.primary_zone.lower() == "zone_3"]
+            z4_templates = [t for t in templates if t.primary_zone.lower() in ["zone_4", "zone_5"]]
+
+            # Select appropriate template based on session index and targets
+            if session_index < z3_sessions_target and z3_templates:
+                # Use Z3 template
+                template = z3_templates[session_index % len(z3_templates)]
+            elif z4_templates:
+                # Use Z4 template
+                z4_index = session_index - z3_sessions_target
+                template = z4_templates[z4_index % len(z4_templates)]
+            else:
+                # Fallback to any template
+                template = templates[session_index % len(templates)]
+        else:
+            # Standard round robin if only one intensity type
+            if config.rotation_strategy == "random":
+                import random
+                template = random.choice(templates)
+            else:  # round_robin
+                template = templates[session_index % len(templates)]
+
+        return {
+            "session_type": template.session_type,
+            "primary_zone": template.primary_zone,
+            "workout_description": template.workout_description,
+            "discipline": template.discipline,
+        }
 
     def _generate_week(
         self,
@@ -413,10 +534,7 @@ class TrainingPlanGenerator:
         """
         Create the session schedule for a week.
 
-        Follows 80/20 polarized intensity distribution:
-        - 80% of volume in Zone 1-2 (easy aerobic)
-        - 20% of volume in Zone 4-5 (high intensity)
-        - Zone 3 (tempo) minimized
+        Intensity distribution and workout types are determined by methodology configuration.
 
         Args:
             available_days: Days available for training
@@ -433,9 +551,10 @@ class TrainingPlanGenerator:
         sessions = []
         week_volume_minutes = week_volume_hours * 60
 
-        # Calculate target minutes for intensity distribution (80/20)
-        low_intensity_target = week_volume_minutes * 0.80
-        high_intensity_target = week_volume_minutes * 0.20
+        # Calculate target minutes for intensity distribution from methodology config
+        low_intensity_target, threshold_intensity_target, high_intensity_target = (
+            self._get_intensity_targets(week_volume_minutes)
+        )
 
         # Determine training days (exclude rest day)
         training_days = [day for day in available_days if day != rest_day]
@@ -456,8 +575,10 @@ class TrainingPlanGenerator:
             low_intensity_target -= long_duration
             training_days.remove(long_workout_day)
 
-        # Place HI sessions on separate days
-        hi_duration_each = int(high_intensity_target / hi_sessions_per_week)
+        # Place intensity sessions (both threshold Z3 and high Z4-Z5) using methodology config
+        # Total intensity time = threshold_target + high_target
+        total_intensity_target = threshold_intensity_target + high_intensity_target
+        intensity_duration_each = int(total_intensity_target / hi_sessions_per_week) if hi_sessions_per_week > 0 else 0
 
         for i in range(hi_sessions_per_week):
             if not training_days:
@@ -465,25 +586,45 @@ class TrainingPlanGenerator:
 
             day = training_days.pop(0)
 
-            # Alternate between different HI session types
-            if i % 3 == 0:
-                session_type = SessionType.RUN
-                workout_details = "VO2max intervals: 6×800m @ Z4 with 2min recovery"
-            elif i % 3 == 1:
-                session_type = SessionType.SWIM
-                workout_details = "Threshold intervals: 8×100m @ Z4 with 90sec rest"
+            # Get workout template from methodology configuration
+            workout_template = self._get_hi_workout_template(i, phase, hi_sessions_per_week)
+
+            # Map string session_type to SessionType enum
+            session_type_map = {
+                "run": SessionType.RUN,
+                "swim": SessionType.SWIM,
+                "bike": SessionType.BIKE,
+            }
+            session_type = session_type_map.get(
+                workout_template["session_type"].lower(),
+                SessionType.BIKE
+            )
+
+            # Map string primary_zone to IntensityZone enum
+            zone_map = {
+                "zone_3": IntensityZone.ZONE_3,
+                "zone_4": IntensityZone.ZONE_4,
+                "zone_5": IntensityZone.ZONE_5,
+            }
+            primary_zone = zone_map.get(
+                workout_template["primary_zone"].lower(),
+                IntensityZone.ZONE_4
+            )
+
+            # Use descriptive label based on zone
+            if primary_zone == IntensityZone.ZONE_3:
+                intensity_label = "Threshold"
             else:
-                session_type = SessionType.BIKE
-                workout_details = "Sweet spot intervals: 4×10min @ Z4 with 3min recovery"
+                intensity_label = "High-intensity"
 
             sessions.append(
                 TrainingSession(
                     day=day,
                     session_type=session_type,
-                    primary_zone=IntensityZone.ZONE_4,
-                    duration_minutes=hi_duration_each,
-                    description=f"High-intensity {session_type.value} session",
-                    workout_details=workout_details,
+                    primary_zone=primary_zone,
+                    duration_minutes=intensity_duration_each,
+                    description=f"{intensity_label} {session_type.value} session",
+                    workout_details=workout_template["workout_description"],
                 )
             )
 
