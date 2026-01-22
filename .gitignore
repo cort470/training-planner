@@ -64,3 +64,9 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.production.local

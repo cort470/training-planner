@@ -7,7 +7,7 @@ including weekly schedules, individual sessions, and plan metadata.
 
 from datetime import date, datetime
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -75,6 +75,22 @@ class TrainingSession(BaseModel):
     )
     workout_details: Optional[str] = Field(
         None, description="Additional structured workout details (intervals, sets, etc.)"
+    )
+
+    # Adherence tracking (populated after activity sync)
+    actual_activity_id: Optional[int] = Field(
+        None,
+        description="Database ID of completed activity (if matched)"
+    )
+
+    adherence_status: Optional[Literal["completed", "partial", "missed", "unscheduled"]] = Field(
+        None,
+        description="Status after comparing to actual activity"
+    )
+
+    adherence_details: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Comparison metrics: duration_delta, zone_match, etc."
     )
 
     @field_validator("duration_minutes")
@@ -270,6 +286,12 @@ class TrainingPlan(BaseModel):
     )
     notes: Optional[str] = Field(None, description="General notes about the plan")
 
+    # Adherence tracking (computed from linked activities)
+    adherence_summary: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Overall adherence metrics: completion_rate, zone_accuracy, volume_variance"
+    )
+
     @field_validator("weeks")
     @classmethod
     def validate_weeks_count(cls, v: List[TrainingWeek], info) -> List[TrainingWeek]:
@@ -347,3 +369,40 @@ class TrainingPlan(BaseModel):
             phase_name = week.phase.value
             phase_counts[phase_name] = phase_counts.get(phase_name, 0) + 1
         return phase_counts
+
+    def calculate_adherence(self) -> Dict[str, float]:
+        """
+        Calculate plan adherence from linked activities.
+
+        Returns:
+            Dictionary with adherence metrics:
+            - completion_rate: Percentage of planned sessions completed (0-1)
+            - total_planned: Total number of planned sessions
+            - total_completed: Number of completed sessions
+            - total_partial: Number of partially completed sessions
+            - total_missed: Number of missed sessions
+        """
+        total_sessions = 0
+        completed_sessions = 0
+        partial_sessions = 0
+        missed_sessions = 0
+
+        for week in self.weeks:
+            for session in week.sessions:
+                total_sessions += 1
+                if session.adherence_status == "completed":
+                    completed_sessions += 1
+                elif session.adherence_status == "partial":
+                    partial_sessions += 1
+                elif session.adherence_status == "missed":
+                    missed_sessions += 1
+
+        completion_rate = completed_sessions / total_sessions if total_sessions > 0 else 0.0
+
+        return {
+            "completion_rate": completion_rate,
+            "total_planned": total_sessions,
+            "total_completed": completed_sessions,
+            "total_partial": partial_sessions,
+            "total_missed": missed_sessions,
+        }

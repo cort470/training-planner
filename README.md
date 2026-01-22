@@ -25,6 +25,19 @@ A decision-support tool for serious amateur triathletes that treats training met
 - **Enhanced Reasoning Traces:** Documents fragility calculations and plan generation decisions
 - **105 passing tests** covering fragility, planning, and sensitivity analysis
 
+### Phase 3: CLI Enhancement (✅ Complete)
+- **Complete CLI Interface:** Full workflow commands (validate, generate-plan, what-if, analyze-fragility)
+- **Rich Display Functions:** Color-coded fragility gauges and plan summaries
+- **Interactive "What-If" Analysis:** Explore scenario impacts on fragility and plans
+
+### Phase 4: Web Interface & API (✅ Complete - MVP)
+- **FastAPI Backend:** RESTful API with 6 endpoints (validation, plans, fragility, sensitivity, methodologies, strava)
+- **React Frontend:** Modern TypeScript SPA with 4 pages (Home, Profile, Validation, Plan)
+- **Database Layer:** SQLAlchemy with Alembic migrations for future activity tracking
+- **Strava Integration Prep:** OAuth endpoints and activity tracking schemas (Phase 5)
+- **Type-Safe API:** Pydantic request/response models with full validation
+- **Mobile-Responsive UI:** Tailwind CSS v3 with color-coded zones and phases
+
 ## 📁 Project Structure
 
 ```
@@ -54,7 +67,52 @@ training-planner/
 │   ├── planner.py                      # Training plan generation
 │   ├── sensitivity.py                  # "What-if" scenario analysis
 │   ├── trace.py                        # Reasoning trace builder
-│   └── cli.py                          # CLI interface
+│   ├── database.py                     # SQLAlchemy models for activity tracking
+│   ├── overtraining.py                 # Overtraining detection (Phase 5 prep)
+│   ├── cli.py                          # CLI interface
+│   └── api/                            # FastAPI web application
+│       ├── main.py                     # FastAPI app entry point
+│       ├── routes/                     # API endpoint modules
+│       │   ├── validation.py
+│       │   ├── plans.py
+│       │   ├── fragility.py
+│       │   ├── sensitivity.py
+│       │   ├── methodologies.py
+│       │   └── strava.py               # Strava integration (Phase 5)
+│       └── models/                     # API request/response models
+│           ├── requests.py
+│           └── responses.py
+├── alembic/                            # Database migrations
+│   ├── versions/                       # Migration scripts
+│   └── env.py
+├── frontend/                           # React TypeScript web UI
+│   ├── src/
+│   │   ├── pages/                      # Route pages
+│   │   │   ├── HomePage.tsx
+│   │   │   ├── ProfilePage.tsx
+│   │   │   ├── ValidationPage.tsx
+│   │   │   └── PlanPage.tsx
+│   │   ├── components/                 # Reusable components
+│   │   │   └── MethodologyCard.tsx
+│   │   ├── api/                        # API client modules
+│   │   │   ├── client.ts
+│   │   │   ├── methodologies.ts
+│   │   │   ├── validation.ts
+│   │   │   └── plans.ts
+│   │   ├── hooks/                      # React Query hooks
+│   │   │   ├── useMethodologies.ts
+│   │   │   ├── useValidation.ts
+│   │   │   └── usePlanGeneration.ts
+│   │   ├── store/                      # State management
+│   │   │   └── profileStore.ts
+│   │   ├── types/                      # TypeScript types
+│   │   │   ├── index.ts
+│   │   │   └── profile.ts
+│   │   └── utils/                      # Utilities
+│   │       ├── validationSchemas.ts
+│   │       └── profileHelpers.ts
+│   ├── package.json
+│   └── vite.config.ts
 └── tests/
     ├── __init__.py
     ├── test_schemas.py                 # Schema validation tests
@@ -79,10 +137,17 @@ training-planner/
 
 ### Prerequisites
 
+**Backend:**
 - Python 3.10 or higher
 - pip
 
+**Frontend (optional, for web UI):**
+- Node.js 18+ (recommended: 24.13.0)
+- npm
+
 ### Installation
+
+**Backend Setup:**
 
 ```bash
 # Clone the repository
@@ -95,7 +160,35 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Initialize database (optional, for web UI)
+alembic upgrade head
 ```
+
+**Frontend Setup (optional, for web UI):**
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+**Running the Web Application:**
+
+```bash
+# Terminal 1: Start backend API
+uvicorn src.api.main:app --reload --port 8000
+
+# Terminal 2: Start frontend dev server (from frontend/ directory)
+cd frontend && npm run dev
+```
+
+Then visit `http://localhost:5173` in your browser.
 
 ### Running Tests
 
@@ -119,6 +212,17 @@ python3 -m pytest -v
 Expected result: **105 passed, 1 skipped**
 
 ## 💻 Usage Examples
+
+### Web UI (Recommended for New Users)
+
+The easiest way to use the training planner is through the web interface:
+
+1. Start the backend: `uvicorn src.api.main:app --reload --port 8000`
+2. Start the frontend: `cd frontend && npm run dev`
+3. Visit `http://localhost:5173`
+4. Select a methodology → Fill profile → View validation → Generate plan
+
+### CLI Usage (Advanced Users)
 
 ### 1. Validate a User Profile
 
@@ -403,12 +507,26 @@ This is a demonstration project focused on AI alignment principles in fitness ap
 - [x] `analyze-fragility` command - Standalone fragility analysis
 - [x] Rich display functions for fragility gauge and plan summaries
 
-### 🔮 Phase 4: Future Enhancements
-- [ ] Multi-methodology support
-- [ ] Historical tracking
-- [ ] Web interface (FastAPI)
-- [ ] Data export and visualization
+### ✅ Phase 4: Web Interface & API (Complete - MVP)
+- [x] FastAPI backend with 6 API endpoints
+- [x] React TypeScript frontend (4 pages)
+- [x] SQLAlchemy database layer with Alembic
+- [x] Pydantic request/response models
+- [x] Mobile-responsive UI with Tailwind CSS v3
+- [x] Type-safe API client with TanStack Query
+- [x] Form validation with React Hook Form + Zod
+- [x] State management with Zustand + localStorage
+- [x] Strava integration preparation (OAuth stubs)
+
+### 🔮 Phase 5: Future Enhancements
+- [ ] Strava OAuth implementation
+- [ ] Activity sync and adherence tracking
+- [ ] Overtraining detection from activity data
+- [ ] Multi-methodology support (Threshold, Pyramidal)
+- [ ] Historical plan tracking
+- [ ] Export to PDF/ICS
 - [ ] Plan comparison tools
+- [ ] Deployment to production (Vercel + Railway)
 
 ## 📄 License
 
@@ -422,6 +540,18 @@ Built with principles from:
 - Human-centered AI design principles
 - Pydantic v2 for robust data validation
 
+## 🌐 API Documentation
+
+For detailed API endpoint documentation, see [API_README.md](API_README.md).
+
+**Available Endpoints:**
+- `POST /api/validate` - Validate user profile against methodology
+- `POST /api/plans` - Generate training plan
+- `POST /api/fragility` - Calculate fragility score
+- `POST /api/sensitivity` - Run "what-if" analysis
+- `GET /api/methodologies` - List available methodologies
+- `POST /api/strava/*` - Strava integration (Phase 5)
+
 ---
 
-**Current Status:** Phase 1, 2 & 3 complete with 105/106 tests passing. All CLI commands and programmatic APIs ready for production use.
+**Current Status:** Phase 1-4 complete with 105/106 tests passing. CLI commands, programmatic APIs, and web UI ready for use. Strava integration (Phase 5) in preparation.

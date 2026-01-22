@@ -6,9 +6,19 @@ pydantic-settings>=2.1.0
 typer>=0.9.0
 rich>=13.7.0
 
+# Web API
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# Database
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
 # Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
+httpx>=0.26.0
 
 # Development
 black>=23.12.0

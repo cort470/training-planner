@@ -123,6 +123,210 @@ class MenstrualPhase(str, Enum):
 # Methodology Model Card Components
 # ============================================================================
 
+
+class IntensityDistributionConfig(BaseModel):
+    """Defines target intensity zone distribution percentages for a methodology."""
+
+    low_intensity_target: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Target percentage of volume in Zone 1-2 (easy aerobic). Must be decimal 0.0-1.0."
+    )
+
+    threshold_intensity_target: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Target percentage of volume in Zone 3 (tempo/threshold). Must be decimal 0.0-1.0."
+    )
+
+    high_intensity_target: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Target percentage of volume in Zone 4-5 (VO2max/anaerobic). Must be decimal 0.0-1.0."
+    )
+
+    tolerance_percent: float = Field(
+        ...,
+        ge=0.0,
+        le=10.0,
+        description="Acceptable deviation from targets as percentage (e.g., 5.0 for ±5%)"
+    )
+
+    @model_validator(mode='after')
+    def validate_distribution_sum(self):
+        """Ensure intensity percentages sum to 1.0 (100%)."""
+        total = (
+            self.low_intensity_target
+            + self.threshold_intensity_target
+            + self.high_intensity_target
+        )
+        if not (0.99 <= total <= 1.01):
+            raise ValueError(
+                f"Intensity distribution must sum to 1.0 (100%), got {total:.3f}. "
+                f"Low={self.low_intensity_target}, Threshold={self.threshold_intensity_target}, "
+                f"High={self.high_intensity_target}"
+            )
+        return self
+
+
+class HIWorkoutTemplate(BaseModel):
+    """Template for a high-intensity workout session."""
+
+    session_type: str = Field(
+        ...,
+        description="Type of session (run, swim, bike)"
+    )
+
+    primary_zone: str = Field(
+        ...,
+        description="Primary intensity zone for this workout (zone_3, zone_4, zone_5)"
+    )
+
+    workout_description: str = Field(
+        ...,
+        description="Human-readable workout description (e.g., '6×800m @ Z4 with 2min recovery')"
+    )
+
+    discipline: str = Field(
+        ...,
+        description="Sport discipline for this workout (run, swim, bike)"
+    )
+
+    recommended_phases: List[str] = Field(
+        ...,
+        description="Training phases where this workout is appropriate (base, build, peak, taper)"
+    )
+
+
+class SessionTypeConfig(BaseModel):
+    """Defines high-intensity workout templates and rotation strategy."""
+
+    hi_workout_templates: List[HIWorkoutTemplate] = Field(
+        ...,
+        min_length=1,
+        description="List of high-intensity workout templates to rotate through"
+    )
+
+    rotation_strategy: Literal["round_robin", "phase_specific", "random"] = Field(
+        ...,
+        description="Strategy for selecting workout templates (round_robin, phase_specific, random)"
+    )
+
+    max_consecutive_same_type: int = Field(
+        ...,
+        ge=1,
+        le=3,
+        description="Maximum number of consecutive HI sessions of same type (1-3)"
+    )
+
+
+class PhasePercentages(BaseModel):
+    """Training phase allocation percentages for a specific plan length."""
+
+    base_percent: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Percentage of plan allocated to base phase (0.0-1.0)"
+    )
+
+    build_percent: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Percentage of plan allocated to build phase (0.0-1.0)"
+    )
+
+    peak_percent: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Percentage of plan allocated to peak phase (0.0-1.0)"
+    )
+
+    taper_percent: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Percentage of plan allocated to taper phase (0.0-1.0)"
+    )
+
+    min_base_weeks: int = Field(
+        ...,
+        ge=1,
+        description="Minimum weeks for base phase"
+    )
+
+    min_build_weeks: int = Field(
+        ...,
+        ge=1,
+        description="Minimum weeks for build phase"
+    )
+
+    min_peak_weeks: int = Field(
+        ...,
+        ge=1,
+        description="Minimum weeks for peak phase"
+    )
+
+    min_taper_weeks: int = Field(
+        ...,
+        ge=1,
+        description="Minimum weeks for taper phase"
+    )
+
+    @model_validator(mode='after')
+    def validate_phase_percentages_sum(self):
+        """Ensure phase percentages sum to 1.0 (100%)."""
+        total = (
+            self.base_percent
+            + self.build_percent
+            + self.peak_percent
+            + self.taper_percent
+        )
+        if not (0.99 <= total <= 1.01):
+            raise ValueError(
+                f"Phase percentages must sum to 1.0 (100%), got {total:.3f}. "
+                f"Base={self.base_percent}, Build={self.build_percent}, "
+                f"Peak={self.peak_percent}, Taper={self.taper_percent}"
+            )
+        return self
+
+
+class PhaseDistributionConfig(BaseModel):
+    """Defines training phase allocation percentages for different plan lengths."""
+
+    short_plan_phases: PhasePercentages = Field(
+        ...,
+        description="Phase distribution for short plans (4-6 weeks)"
+    )
+
+    medium_plan_phases: PhasePercentages = Field(
+        ...,
+        description="Phase distribution for medium plans (8-12 weeks)"
+    )
+
+    long_plan_phases: PhasePercentages = Field(
+        ...,
+        description="Phase distribution for long plans (16+ weeks)"
+    )
+
+    volume_consistency_threshold: int = Field(
+        ...,
+        ge=1,
+        description="Minimum weeks of volume consistency before progressing phases"
+    )
+
+    base_extension_weeks: int = Field(
+        ...,
+        ge=0,
+        description="Extra base weeks to add if volume consistency insufficient"
+    )
+
+
 class Philosophy(BaseModel):
     """Core training philosophy and rationale for a methodology."""
 
@@ -350,6 +554,217 @@ class MethodologyModelCard(BaseModel):
         description="Scientific literature or expert sources supporting methodology"
     )
 
+    intensity_distribution_config: IntensityDistributionConfig = Field(
+        ...,
+        description="REQUIRED: Intensity zone distribution percentages (low/threshold/high). "
+                    "Defines the target percentage of training volume in each intensity zone. "
+                    "All methodologies MUST provide explicit configuration."
+    )
+
+    session_type_config: SessionTypeConfig = Field(
+        ...,
+        description="REQUIRED: High-intensity workout templates and rotation strategy. "
+                    "Defines specific HI workouts (intervals, tempo, etc.) for this methodology. "
+                    "All methodologies MUST provide explicit configuration."
+    )
+
+    phase_distribution_config: PhaseDistributionConfig = Field(
+        ...,
+        description="REQUIRED: Training phase allocation percentages (base/build/peak/taper). "
+                    "Defines how to distribute weeks across training phases based on plan length. "
+                    "All methodologies MUST provide explicit configuration."
+    )
+
+
+# ============================================================================
+# Strava Integration and Activity Tracking
+# ============================================================================
+
+class StravaActivitySummary(BaseModel):
+    """
+    Summary of a Strava activity for display and analysis.
+
+    Used for adherence tracking, overtraining detection, and
+    performance trend analysis.
+    """
+
+    strava_activity_id: int = Field(
+        ...,
+        description="Strava's unique activity ID"
+    )
+
+    activity_date: datetime = Field(
+        ...,
+        description="When the activity occurred"
+    )
+
+    activity_type: str = Field(
+        ...,
+        description="Activity type from Strava (Run, Ride, Swim, etc.)"
+    )
+
+    name: str = Field(
+        ...,
+        description="Activity title"
+    )
+
+    description: Optional[str] = Field(
+        None,
+        description="User's activity notes (for sentiment analysis)"
+    )
+
+    duration_seconds: int = Field(
+        ...,
+        ge=0,
+        description="Total activity duration"
+    )
+
+    distance_meters: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Total distance covered"
+    )
+
+    elevation_gain_meters: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Total elevation gain"
+    )
+
+    average_heartrate: Optional[float] = Field(
+        None,
+        ge=0,
+        le=250,
+        description="Average heart rate (bpm)"
+    )
+
+    max_heartrate: Optional[float] = Field(
+        None,
+        ge=0,
+        le=250,
+        description="Maximum heart rate (bpm)"
+    )
+
+    average_power: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Average power (watts)"
+    )
+
+    normalized_power: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Normalized power (watts)"
+    )
+
+    perceived_zone: Optional[str] = Field(
+        None,
+        description="Inferred intensity zone from metrics (zone_1, zone_2, etc.)"
+    )
+
+    adherence_score: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="0-1 score comparing to planned session"
+    )
+
+
+class ActivityLog(BaseModel):
+    """
+    Collection of recent activities for an athlete.
+
+    Aggregates activity data and calculates adherence metrics.
+    """
+
+    athlete_id: str = Field(
+        ...,
+        description="Athlete identifier"
+    )
+
+    last_sync: Optional[datetime] = Field(
+        None,
+        description="Last Strava sync timestamp"
+    )
+
+    recent_activities: List[StravaActivitySummary] = Field(
+        default_factory=list,
+        description="Recent completed activities"
+    )
+
+    # Aggregated volume metrics
+    seven_day_volume_hours: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Total training volume in last 7 days"
+    )
+
+    fourteen_day_volume_hours: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Total training volume in last 14 days"
+    )
+
+    thirty_day_volume_hours: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Total training volume in last 30 days"
+    )
+
+    average_weekly_volume: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Average weekly training volume"
+    )
+
+    # Adherence metrics (requires active plan)
+    plan_adherence_rate: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Percentage of planned sessions completed"
+    )
+
+    intensity_adherence_rate: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Percentage of sessions in correct zone"
+    )
+
+
+class StravaIntegrationStatus(BaseModel):
+    """
+    Strava connection status for an athlete.
+
+    Tracks OAuth connection state and sync status.
+    """
+
+    is_connected: bool = Field(
+        default=False,
+        description="Whether Strava account is connected"
+    )
+
+    strava_athlete_id: Optional[int] = Field(
+        None,
+        description="Strava's athlete ID"
+    )
+
+    last_sync: Optional[datetime] = Field(
+        None,
+        description="Last successful activity sync"
+    )
+
+    token_expires_at: Optional[datetime] = Field(
+        None,
+        description="When the OAuth access token expires"
+    )
+
+    sync_enabled: bool = Field(
+        default=False,
+        description="Whether automatic syncing is enabled"
+    )
+
 
 # ============================================================================
 # User Profile Components
@@ -426,6 +841,17 @@ class CurrentState(BaseModel):
     menstrual_cycle_phase: MenstrualPhase = Field(
         default=MenstrualPhase.NOT_APPLICABLE,
         description="Current phase for female athletes"
+    )
+
+    # Activity tracking (optional, populated from Strava or manual entry)
+    activity_log: Optional[ActivityLog] = Field(
+        default=None,
+        description="Recent activity data from Strava or manual entry"
+    )
+
+    strava_status: Optional[StravaIntegrationStatus] = Field(
+        default=None,
+        description="Strava integration connection status"
     )
 
 
