@@ -327,6 +327,132 @@ class PhaseDistributionConfig(BaseModel):
     )
 
 
+# ============================================================================
+# Periodization Configuration (Mesocycle/Recovery)
+# ============================================================================
+
+class RecoveryWeekConfig(BaseModel):
+    """Configuration for recovery/deload weeks within mesocycles."""
+
+    volume_multiplier_min: float = Field(
+        default=0.50,
+        ge=0.3,
+        le=0.7,
+        description="Minimum volume as percentage of normal (e.g., 0.50 = 50%)"
+    )
+
+    volume_multiplier_max: float = Field(
+        default=0.60,
+        ge=0.4,
+        le=0.8,
+        description="Maximum volume as percentage of normal (e.g., 0.60 = 60%)"
+    )
+
+    max_hi_sessions: int = Field(
+        default=1,
+        ge=0,
+        le=2,
+        description="Maximum high-intensity sessions during recovery week"
+    )
+
+    intensity_reduction: bool = Field(
+        default=True,
+        description="Whether to reduce intensity (prefer Z1-Z2 only)"
+    )
+
+    week_note_template: str = Field(
+        default="RECOVERY WEEK: Volume reduced to {volume_percent}%. Focus on rest, sleep, and nutrition. Light movement only - no intensity unless feeling fully recovered.",
+        description="Template for recovery week notes ({volume_percent} placeholder)"
+    )
+
+
+class LoadRecoveryRatio(BaseModel):
+    """Load:Recovery ratio configuration for mesocycle structure."""
+
+    load_weeks: int = Field(
+        default=3,
+        ge=1,
+        le=5,
+        description="Number of load weeks before recovery (e.g., 3 for 3:1)"
+    )
+
+    recovery_weeks: int = Field(
+        default=1,
+        ge=1,
+        le=2,
+        description="Number of recovery weeks (usually 1)"
+    )
+
+    @property
+    def mesocycle_length(self) -> int:
+        """Total mesocycle length in weeks."""
+        return self.load_weeks + self.recovery_weeks
+
+
+class PeriodizationConfig(BaseModel):
+    """
+    Configuration for mesocycle-based periodization with recovery weeks.
+
+    Controls load:recovery ratios, recovery week characteristics, and
+    how fragility/experience affect periodization decisions.
+    """
+
+    default_ratio: LoadRecoveryRatio = Field(
+        default_factory=lambda: LoadRecoveryRatio(load_weeks=3, recovery_weeks=1),
+        description="Default load:recovery ratio (typically 3:1)"
+    )
+
+    high_fragility_ratio: LoadRecoveryRatio = Field(
+        default_factory=lambda: LoadRecoveryRatio(load_weeks=2, recovery_weeks=1),
+        description="Ratio for high fragility athletes (>0.6) or beginners (<2 years)"
+    )
+
+    fragility_threshold: float = Field(
+        default=0.6,
+        ge=0.3,
+        le=0.8,
+        description="Fragility score threshold for switching to high_fragility_ratio"
+    )
+
+    experience_threshold_years: float = Field(
+        default=2.0,
+        ge=0.5,
+        le=5.0,
+        description="Training years threshold - below this uses high_fragility_ratio"
+    )
+
+    recovery_week_config: RecoveryWeekConfig = Field(
+        default_factory=RecoveryWeekConfig,
+        description="Configuration for recovery week characteristics"
+    )
+
+    phase_deload_adjustments: Dict[str, float] = Field(
+        default_factory=lambda: {
+            "base": 0.0,
+            "build": 0.0,
+            "peak": 0.05,
+            "taper": 0.0
+        },
+        description="Additional volume reduction by phase for deload weeks"
+    )
+
+    skip_final_mesocycle_recovery: bool = Field(
+        default=True,
+        description="Whether to skip recovery week in final mesocycle before taper"
+    )
+
+    @model_validator(mode='after')
+    def validate_volume_multipliers(self):
+        """Ensure min <= max for volume multipliers."""
+        rc = self.recovery_week_config
+        if rc.volume_multiplier_min > rc.volume_multiplier_max:
+            raise ValueError(
+                f"volume_multiplier_min ({rc.volume_multiplier_min}) cannot exceed "
+                f"volume_multiplier_max ({rc.volume_multiplier_max})"
+            )
+        return self
+
+
 class Philosophy(BaseModel):
     """Core training philosophy and rationale for a methodology."""
 
@@ -573,6 +699,14 @@ class MethodologyModelCard(BaseModel):
         description="REQUIRED: Training phase allocation percentages (base/build/peak/taper). "
                     "Defines how to distribute weeks across training phases based on plan length. "
                     "All methodologies MUST provide explicit configuration."
+    )
+
+    periodization_config: Optional[PeriodizationConfig] = Field(
+        default=None,
+        description="OPTIONAL: Mesocycle periodization with recovery weeks. "
+                    "Controls load:recovery ratios (3:1, 2:1), recovery week volume/intensity, "
+                    "and fragility-based adjustments. If not provided, defaults to 3:1 ratio "
+                    "with standard recovery settings."
     )
 
 

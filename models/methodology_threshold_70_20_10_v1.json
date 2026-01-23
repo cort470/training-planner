@@ -195,42 +195,85 @@
     "hi_workout_templates": [
       {
         "session_type": "bike",
-        "primary_zone": "zone_3",
-        "workout_description": "Threshold intervals: 3×20min @ Z3 with 5min recovery",
+        "primary_zone": "threshold",
+        "workout_description": "Threshold intervals: 3×20min @ 91-105% FTP with 5min easy spin",
+        "discipline": "bike",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "bike",
+        "primary_zone": "tempo",
+        "workout_description": "Sweet spot: 2×30min @ 88-94% FTP with 5min recovery",
         "discipline": "bike",
         "recommended_phases": ["build", "peak"]
       },
       {
         "session_type": "run",
-        "primary_zone": "zone_3",
-        "workout_description": "Tempo run: 40min continuous @ Z3",
+        "primary_zone": "threshold",
+        "workout_description": "Tempo run: 40min continuous @ threshold pace",
+        "discipline": "run",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "run",
+        "primary_zone": "tempo",
+        "workout_description": "Cruise intervals: 5×10min @ tempo pace with 2min jog",
         "discipline": "run",
         "recommended_phases": ["build", "peak"]
       },
       {
         "session_type": "swim",
-        "primary_zone": "zone_3",
-        "workout_description": "Threshold intervals: 5×400m @ Z3 with 60sec rest",
+        "primary_zone": "threshold",
+        "workout_description": "Threshold set: 5×400m @ CSS pace with 60sec rest",
         "discipline": "swim",
         "recommended_phases": ["build", "peak"]
       },
       {
         "session_type": "bike",
-        "primary_zone": "zone_4",
-        "workout_description": "VO2max intervals: 5×5min @ Z4 with 3min recovery",
+        "primary_zone": "vo2max",
+        "workout_description": "VO2max intervals: 5×5min @ 106-120% FTP with 3min easy spin",
         "discipline": "bike",
         "recommended_phases": ["peak"]
       },
       {
         "session_type": "run",
-        "primary_zone": "zone_4",
-        "workout_description": "VO2max intervals: 6×3min @ Z4 with 3min recovery",
+        "primary_zone": "vo2max",
+        "workout_description": "VO2max intervals: 6×3min @ VO2max pace with 3min jog",
         "discipline": "run",
         "recommended_phases": ["peak"]
       }
     ],
+    "base_phase_templates": [
+      {
+        "session_type": "run",
+        "primary_zone": "endurance",
+        "workout_description": "Easy aerobic run at conversational pace",
+        "discipline": "run"
+      },
+      {
+        "session_type": "bike",
+        "primary_zone": "endurance",
+        "workout_description": "Endurance ride at 56-75% FTP",
+        "discipline": "bike"
+      },
+      {
+        "session_type": "swim",
+        "primary_zone": "endurance",
+        "workout_description": "Technique swim with drill focus",
+        "discipline": "swim"
+      }
+    ],
     "rotation_strategy": "phase_specific",
-    "max_consecutive_same_type": 2
+    "max_consecutive_same_type": 2,
+    "min_sessions_per_sport": {
+      "run": 2,
+      "bike": 2,
+      "swim": 1
+    }
+  },
+  "recovery_spacing_config": {
+    "min_days_between_hi_sessions": 2,
+    "prefer_hard_after_rest_day": true
   },
   "phase_distribution_config": {
     "short_plan_phases": {
@@ -265,5 +308,30 @@
     },
     "volume_consistency_threshold": 8,
     "base_extension_weeks": 2
+  },
+  "periodization_config": {
+    "default_ratio": {
+      "load_weeks": 3,
+      "recovery_weeks": 1
+    },
+    "high_fragility_ratio": {
+      "load_weeks": 2,
+      "recovery_weeks": 1
+    },
+    "fragility_threshold": 0.6,
+    "experience_threshold_years": 2.0,
+    "recovery_week_config": {
+      "volume_multiplier_min": 0.45,
+      "volume_multiplier_max": 0.55,
+      "max_hi_sessions": 0,
+      "week_note_template": "RECOVERY WEEK: Volume reduced to {volume_percent}% for complete recovery. NO high-intensity or threshold sessions this week. Focus exclusively on easy aerobic work, mobility, and sleep."
+    },
+    "phase_deload_adjustments": {
+      "base": 0.0,
+      "build": 0.0,
+      "peak": 0.05,
+      "taper": 0.0
+    },
+    "skip_final_mesocycle_recovery": true
   }
 }

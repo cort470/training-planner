@@ -1,29 +1,56 @@
 import { apiClient } from './client';
 import type { UserProfile } from '../types/profile';
 
+// Matches backend AssumptionCheck schema
+export interface AssumptionCheck {
+  assumption_key: string;
+  passed: boolean;
+  user_value: any;
+  threshold: any;
+  reasoning: string;
+}
+
+// Matches backend GateViolation schema
+export interface GateViolation {
+  condition: string;
+  threshold: string;
+  severity: 'warning' | 'blocking';
+  bridge: string;
+  assumption_expectation?: string;
+  reasoning_justification?: string;
+}
+
+// Matches backend ReasoningTrace schema
+export interface ReasoningTrace {
+  timestamp: string;
+  methodology_id: string;
+  athlete_id: string;
+  checks: AssumptionCheck[];
+  safety_gates: GateViolation[];
+  result: 'approved' | 'refused' | 'warning';
+  fragility_score?: number;
+}
+
+// Matches backend ValidationResult schema (nested in response)
+export interface ValidationResultData {
+  approved: boolean;
+  refusal_response?: {
+    status: 'refused' | 'warning' | 'approved';
+    violations: GateViolation[];
+    reasoning_trace_id?: string;
+    message?: string;
+  };
+  reasoning_trace: ReasoningTrace;
+  warnings: string[];
+}
+
+// Matches backend ValidationResponse schema
 export interface ValidationResult {
   approved: boolean;
-  reasoning_trace: {
-    methodology_id: string;
-    validation_timestamp: string;
-    assumptions_checked: Array<{
-      assumption_key: string;
-      passed: boolean;
-      user_value: any;
-      threshold: any;
-      reasoning: string;
-    }>;
-    safety_gates_evaluated: Array<{
-      condition: string;
-      threshold: string;
-      severity: 'warning' | 'blocking';
-      passed: boolean;
-      reasoning: string;
-    }>;
-    decision: 'approved' | 'blocked' | 'approved_with_warnings';
-    warnings: string[];
-    blocking_violations: string[];
-  };
+  reasoning_trace: string[]; // Human-readable reasoning steps
+  warnings: string[];
+  refusal_message?: string;
+  validation_result: ValidationResultData; // Nested structured data
   fragility_score?: number;
   fragility_interpretation?: string;
 }

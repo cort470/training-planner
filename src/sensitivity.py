@@ -316,14 +316,14 @@ class SensitivityAnalyzer:
         Returns:
             Average HI sessions per week
         """
-        from src.plan_schemas import IntensityZone
+        from src.plan_schemas import HIGH_INTENSITY_ZONES
 
         total_hi_sessions = 0
         for week in plan.weeks:
             hi_sessions = [
                 s
                 for s in week.sessions
-                if s.primary_zone in [IntensityZone.ZONE_4, IntensityZone.ZONE_5]
+                if s.primary_zone in HIGH_INTENSITY_ZONES
             ]
             total_hi_sessions += len(hi_sessions)
 

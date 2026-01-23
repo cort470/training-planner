@@ -96,10 +96,16 @@ export function ValidationPage() {
     return null;
   }
 
-  const { approved, reasoning_trace } = validationResult;
-  const hasWarnings = reasoning_trace.warnings && reasoning_trace.warnings.length > 0;
-  const hasBlockingViolations =
-    reasoning_trace.blocking_violations && reasoning_trace.blocking_violations.length > 0;
+  const { approved, validation_result, warnings } = validationResult;
+  const reasoningTrace = validation_result.reasoning_trace;
+
+  // Get blocking violations from safety gates with severity 'blocking' that didn't pass
+  const blockingViolations = reasoningTrace.safety_gates.filter(
+    (gate) => gate.severity === 'blocking'
+  );
+
+  const hasWarnings = warnings && warnings.length > 0;
+  const hasBlockingViolations = blockingViolations.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -206,7 +212,7 @@ export function ValidationPage() {
               Warnings
             </h3>
             <ul className="space-y-2">
-              {reasoning_trace.warnings.map((warning, index) => (
+              {warnings.map((warning, index) => (
                 <li key={index} className="text-yellow-800 flex items-start gap-2">
                   <span className="font-bold mt-1">•</span>
                   <span>{warning}</span>
@@ -224,10 +230,12 @@ export function ValidationPage() {
               Blocking Violations
             </h3>
             <ul className="space-y-2">
-              {reasoning_trace.blocking_violations.map((violation, index) => (
+              {blockingViolations.map((violation, index) => (
                 <li key={index} className="text-red-800 flex items-start gap-2">
                   <span className="font-bold mt-1">•</span>
-                  <span>{violation}</span>
+                  <span>
+                    <strong>{violation.condition}:</strong> {violation.bridge}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -249,21 +257,21 @@ export function ValidationPage() {
           </button>
           {expandedSections.assumptions && (
             <div className="px-6 pb-4 space-y-3">
-              {reasoning_trace.assumptions_checked.map((assumption, index) => (
+              {reasoningTrace.checks.map((check, index) => (
                 <div key={index} className="border-l-2 border-gray-200 pl-4 py-2">
                   <div className="flex items-start gap-2 mb-1">
-                    {assumption.passed ? (
+                    {check.passed ? (
                       <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                     ) : (
                       <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">{assumption.assumption_key}</p>
-                      <p className="text-sm text-gray-600 mt-1">{assumption.reasoning}</p>
-                      {assumption.user_value !== null && assumption.threshold !== null && (
+                      <p className="font-medium text-gray-900">{check.assumption_key}</p>
+                      <p className="text-sm text-gray-600 mt-1">{check.reasoning}</p>
+                      {check.user_value !== null && check.threshold !== null && (
                         <p className="text-xs text-gray-500 mt-1">
-                          Your value: {JSON.stringify(assumption.user_value)} | Threshold:{' '}
-                          {JSON.stringify(assumption.threshold)}
+                          Your value: {JSON.stringify(check.user_value)} | Threshold:{' '}
+                          {JSON.stringify(check.threshold)}
                         </p>
                       )}
                     </div>
@@ -289,35 +297,40 @@ export function ValidationPage() {
           </button>
           {expandedSections.safetyGates && (
             <div className="px-6 pb-4 space-y-3">
-              {reasoning_trace.safety_gates_evaluated.map((gate, index) => (
-                <div key={index} className="border-l-2 border-gray-200 pl-4 py-2">
-                  <div className="flex items-start gap-2 mb-1">
-                    {gate.passed ? (
-                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    ) : gate.severity === 'blocking' ? (
-                      <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-gray-900">{gate.condition}</p>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${
-                            gate.severity === 'blocking'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                        >
-                          {gate.severity}
-                        </span>
+              {reasoningTrace.safety_gates.length === 0 ? (
+                <div className="flex items-center gap-2 text-green-700">
+                  <CheckCircle className="w-5 h-5" />
+                  <p>All safety gates passed - no violations detected.</p>
+                </div>
+              ) : (
+                reasoningTrace.safety_gates.map((gate, index) => (
+                  <div key={index} className="border-l-2 border-gray-200 pl-4 py-2">
+                    <div className="flex items-start gap-2 mb-1">
+                      {gate.severity === 'blocking' ? (
+                        <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-gray-900">{gate.condition}</p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              gate.severity === 'blocking'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}
+                          >
+                            {gate.severity}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">{gate.bridge}</p>
+                        <p className="text-xs text-gray-500">Threshold: {gate.threshold}</p>
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">{gate.reasoning}</p>
-                      <p className="text-xs text-gray-500">Threshold: {gate.threshold}</p>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
         </div>

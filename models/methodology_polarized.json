@@ -189,28 +189,71 @@
     "hi_workout_templates": [
       {
         "session_type": "run",
-        "primary_zone": "zone_4",
-        "workout_description": "VO2max intervals: 6×800m @ Z4 with 2min recovery",
+        "primary_zone": "vo2max",
+        "workout_description": "VO2max intervals: 6×800m @ VO2max pace with 2min jog recovery",
+        "discipline": "run",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "run",
+        "primary_zone": "vo2max",
+        "workout_description": "Hill repeats: 8×90sec @ VO2max effort with jog down recovery",
         "discipline": "run",
         "recommended_phases": ["build", "peak"]
       },
       {
         "session_type": "swim",
-        "primary_zone": "zone_4",
-        "workout_description": "Threshold intervals: 8×100m @ Z4 with 90sec rest",
+        "primary_zone": "vo2max",
+        "workout_description": "VO2max set: 8×100m @ VO2max pace with 90sec rest",
         "discipline": "swim",
         "recommended_phases": ["build", "peak"]
       },
       {
         "session_type": "bike",
-        "primary_zone": "zone_4",
-        "workout_description": "Sweet spot intervals: 4×10min @ Z4 with 3min recovery",
+        "primary_zone": "vo2max",
+        "workout_description": "VO2max intervals: 4×10min @ 106-120% FTP with 3min easy spin",
+        "discipline": "bike",
+        "recommended_phases": ["build", "peak"]
+      },
+      {
+        "session_type": "bike",
+        "primary_zone": "vo2max",
+        "workout_description": "Over-unders: 3×12min alternating 1min @ threshold, 1min @ VO2max",
         "discipline": "bike",
         "recommended_phases": ["build", "peak"]
       }
     ],
+    "base_phase_templates": [
+      {
+        "session_type": "run",
+        "primary_zone": "endurance",
+        "workout_description": "Easy aerobic run with strides: 4×20sec pickups at end",
+        "discipline": "run"
+      },
+      {
+        "session_type": "bike",
+        "primary_zone": "endurance",
+        "workout_description": "Long aerobic ride at conversational pace",
+        "discipline": "bike"
+      },
+      {
+        "session_type": "swim",
+        "primary_zone": "endurance",
+        "workout_description": "Technique-focused swim with drill work",
+        "discipline": "swim"
+      }
+    ],
     "rotation_strategy": "round_robin",
-    "max_consecutive_same_type": 1
+    "max_consecutive_same_type": 1,
+    "min_sessions_per_sport": {
+      "run": 2,
+      "bike": 2,
+      "swim": 1
+    }
+  },
+  "recovery_spacing_config": {
+    "min_days_between_hi_sessions": 2,
+    "prefer_hard_after_rest_day": true
   },
   "phase_distribution_config": {
     "short_plan_phases": {
@@ -245,5 +288,30 @@
     },
     "volume_consistency_threshold": 4,
     "base_extension_weeks": 2
+  },
+  "periodization_config": {
+    "default_ratio": {
+      "load_weeks": 3,
+      "recovery_weeks": 1
+    },
+    "high_fragility_ratio": {
+      "load_weeks": 2,
+      "recovery_weeks": 1
+    },
+    "fragility_threshold": 0.6,
+    "experience_threshold_years": 2.0,
+    "recovery_week_config": {
+      "volume_multiplier_min": 0.50,
+      "volume_multiplier_max": 0.60,
+      "max_hi_sessions": 1,
+      "week_note_template": "RECOVERY WEEK: Volume reduced to {volume_percent}% to allow physiological adaptation. Focus on easy aerobic work and mobility. Limit high-intensity to 1 session maximum."
+    },
+    "phase_deload_adjustments": {
+      "base": 0.0,
+      "build": 0.0,
+      "peak": 0.05,
+      "taper": 0.0
+    },
+    "skip_final_mesocycle_recovery": true
   }
 }

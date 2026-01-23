@@ -16,7 +16,13 @@ from pathlib import Path
 
 import pytest
 
-from src.plan_schemas import IntensityZone, TrainingPhase
+from src.plan_schemas import (
+    HIGH_INTENSITY_ZONES,
+    IntensityZone,
+    THRESHOLD_ZONES,
+    TrainingPhase,
+    WeekType,
+)
 from src.planner import TrainingPlanGenerator
 from src.schemas import MethodologyModelCard, UserProfile
 from src.validator import MethodologyValidator
@@ -265,7 +271,7 @@ def test_fragility_reduces_hi_frequency_high(methodology, validator, high_fragil
         hi_sessions = [
             s
             for s in build_week.sessions
-            if s.primary_zone in [IntensityZone.ZONE_4, IntensityZone.ZONE_5]
+            if s.primary_zone in HIGH_INTENSITY_ZONES
         ]
 
         # High fragility should have 1-2 HI sessions max
@@ -279,18 +285,21 @@ def test_fragility_normal_hi_frequency_low(methodology, validator, valid_user_12
     plan = generator.generate(valid_user_12_week)
 
     # Low-moderate fragility should have 2-3 HI sessions/week
-    # Check a build phase week
-    build_weeks = [w for w in plan.weeks if w.phase == TrainingPhase.BUILD]
+    # Check a build phase LOAD week (not recovery weeks which have reduced HI)
+    build_load_weeks = [
+        w for w in plan.weeks
+        if w.phase == TrainingPhase.BUILD and w.week_type == WeekType.LOAD
+    ]
 
-    if build_weeks:
-        build_week = build_weeks[0]
+    if build_load_weeks:
+        build_week = build_load_weeks[0]
         hi_sessions = [
             s
             for s in build_week.sessions
-            if s.primary_zone in [IntensityZone.ZONE_4, IntensityZone.ZONE_5]
+            if s.primary_zone in HIGH_INTENSITY_ZONES
         ]
 
-        # Low fragility should have 2-3 HI sessions
+        # Low fragility should have 2-3 HI sessions in load weeks
         assert len(hi_sessions) >= 2
 
 
@@ -314,30 +323,30 @@ def test_threshold_session_types():
     generator = TrainingPlanGenerator(threshold_methodology, validation_result)
     plan = generator.generate(threshold_user)
 
-    # Check build/peak weeks for Z3 threshold sessions
+    # Check build/peak weeks for threshold sessions (TEMPO and THRESHOLD zones)
     intensity_weeks = [w for w in plan.weeks if w.phase in [TrainingPhase.BUILD, TrainingPhase.PEAK]]
 
-    # Should have Z3 (threshold) sessions in at least some build/peak weeks
-    z3_session_count = 0
+    # Should have threshold sessions in at least some build/peak weeks
+    threshold_session_count = 0
     for week in intensity_weeks:
-        z3_sessions = [s for s in week.sessions if s.primary_zone == IntensityZone.ZONE_3]
-        z3_session_count += len(z3_sessions)
+        threshold_sessions = [s for s in week.sessions if s.primary_zone in THRESHOLD_ZONES]
+        threshold_session_count += len(threshold_sessions)
 
-    # Threshold methodology should have significant Z3 work (at least 20% of sessions in build/peak)
+    # Threshold methodology should have significant threshold work (at least 15% of sessions in build/peak)
     total_intensity_sessions = sum(len(week.sessions) for week in intensity_weeks)
-    z3_percentage = (z3_session_count / total_intensity_sessions) * 100 if total_intensity_sessions > 0 else 0
+    threshold_percentage = (threshold_session_count / total_intensity_sessions) * 100 if total_intensity_sessions > 0 else 0
 
-    assert z3_percentage >= 15.0, f"Threshold methodology should have ≥15% Z3 sessions in build/peak, got {z3_percentage:.1f}%"
+    assert threshold_percentage >= 15.0, f"Threshold methodology should have ≥15% threshold sessions in build/peak, got {threshold_percentage:.1f}%"
 
     # Verify some session descriptions mention "threshold" or "tempo"
-    z3_descriptions = []
+    threshold_descriptions = []
     for week in intensity_weeks:
         for session in week.sessions:
-            if session.primary_zone == IntensityZone.ZONE_3:
-                z3_descriptions.append(session.description.lower())
+            if session.primary_zone in THRESHOLD_ZONES:
+                threshold_descriptions.append(session.description.lower())
 
-    assert any("threshold" in desc or "tempo" in desc for desc in z3_descriptions), \
-        "Z3 sessions should mention 'threshold' or 'tempo' in description"
+    assert any("threshold" in desc or "tempo" in desc for desc in threshold_descriptions), \
+        "Threshold sessions should mention 'threshold' or 'tempo' in description"
 
 
 def test_pyramidal_session_types():
@@ -360,30 +369,30 @@ def test_pyramidal_session_types():
     generator = TrainingPlanGenerator(pyramidal_methodology, validation_result)
     plan = generator.generate(pyramidal_user)
 
-    # Check build/peak weeks for balanced Z3 and Z4 distribution
+    # Check build/peak weeks for balanced threshold and high-intensity distribution
     intensity_weeks = [w for w in plan.weeks if w.phase in [TrainingPhase.BUILD, TrainingPhase.PEAK]]
 
-    z3_session_count = 0
-    z4_session_count = 0
+    threshold_session_count = 0
+    hi_session_count = 0
 
     for week in intensity_weeks:
-        z3_sessions = [s for s in week.sessions if s.primary_zone == IntensityZone.ZONE_3]
-        z4_sessions = [s for s in week.sessions if s.primary_zone in [IntensityZone.ZONE_4, IntensityZone.ZONE_5]]
-        z3_session_count += len(z3_sessions)
-        z4_session_count += len(z4_sessions)
+        threshold_sessions = [s for s in week.sessions if s.primary_zone in THRESHOLD_ZONES]
+        hi_sessions = [s for s in week.sessions if s.primary_zone in HIGH_INTENSITY_ZONES]
+        threshold_session_count += len(threshold_sessions)
+        hi_session_count += len(hi_sessions)
 
-    # Pyramidal should have both Z3 and Z4 work
-    assert z3_session_count > 0, "Pyramidal should include Z3 threshold sessions"
-    assert z4_session_count > 0, "Pyramidal should include Z4 high-intensity sessions"
+    # Pyramidal should have both threshold and high-intensity work
+    assert threshold_session_count > 0, "Pyramidal should include threshold sessions"
+    assert hi_session_count > 0, "Pyramidal should include high-intensity sessions"
 
-    # Z3 should be more frequent than Z4 (pyramidal pattern: more threshold than VO2max)
-    # Ratio should be approximately 15% Z3 vs 8% Z4 (roughly 2:1)
+    # Threshold should be more frequent than VO2max (pyramidal pattern: more threshold than VO2max)
+    # Ratio should be approximately 15% threshold vs 8% VO2max (roughly 2:1)
     # With discrete sessions, exact ratios may vary based on fragility and total session count
-    total_intensity_sessions = z3_session_count + z4_session_count
-    z3_percentage = (z3_session_count / total_intensity_sessions) * 100 if total_intensity_sessions > 0 else 0
+    total_intensity_sessions = threshold_session_count + hi_session_count
+    threshold_percentage = (threshold_session_count / total_intensity_sessions) * 100 if total_intensity_sessions > 0 else 0
 
-    # Z3 should dominate (at least 50% of intensity sessions)
-    assert z3_percentage >= 50.0, f"Pyramidal should have ≥50% Z3 sessions among intensity work, got {z3_percentage:.1f}%"
+    # Threshold should dominate (at least 50% of intensity sessions)
+    assert threshold_percentage >= 50.0, f"Pyramidal should have ≥50% threshold sessions among intensity work, got {threshold_percentage:.1f}%"
 
 
 def test_weekly_volume_matches_profile(methodology, validator, valid_user_12_week):
@@ -394,10 +403,13 @@ def test_weekly_volume_matches_profile(methodology, validator, valid_user_12_wee
 
     target_volume = valid_user_12_week.current_state.weekly_volume_hours
 
-    # Check base/build phase weeks (not taper)
-    non_taper_weeks = [w for w in plan.weeks if w.phase != TrainingPhase.TAPER]
+    # Check LOAD weeks only (not taper or recovery weeks which have reduced volume)
+    load_weeks = [
+        w for w in plan.weeks
+        if w.phase != TrainingPhase.TAPER and w.week_type == WeekType.LOAD
+    ]
 
-    for week in non_taper_weeks:
+    for week in load_weeks:
         # Should be within 20% of target (allows for phase adjustments)
         assert week.total_volume_hours >= target_volume * 0.8
         assert week.total_volume_hours <= target_volume * 1.2
@@ -680,3 +692,185 @@ def test_methodology_without_configs_fails():
            "session_type_config" in error_message or \
            "phase_distribution_config" in error_message, \
            "ValidationError should mention missing config fields"
+
+
+# ============================================================================
+# PERIODIZATION / MESOCYCLE TESTS
+# ============================================================================
+
+
+def test_mesocycle_structure_12_week(methodology, validator, valid_user_12_week):
+    """Test that 12-week plan has proper mesocycle structure with recovery weeks."""
+    validation_result = validator.validate(valid_user_12_week)
+    generator = TrainingPlanGenerator(methodology, validation_result)
+    plan = generator.generate(valid_user_12_week)
+
+    # Check that recovery weeks exist in the plan (excluding taper)
+    non_taper_weeks = [w for w in plan.weeks if w.phase != TrainingPhase.TAPER]
+    recovery_weeks = [w for w in non_taper_weeks if w.week_type == WeekType.RECOVERY]
+    load_weeks = [w for w in non_taper_weeks if w.week_type == WeekType.LOAD]
+
+    # With 3:1 ratio and ~10 non-taper weeks, should have 2-3 recovery weeks
+    assert len(recovery_weeks) >= 1, "Should have at least 1 recovery week"
+    assert len(load_weeks) >= len(recovery_weeks) * 2, "Load weeks should outnumber recovery weeks"
+
+
+def test_recovery_week_has_reduced_volume(methodology, validator, valid_user_12_week):
+    """Test that recovery weeks have appropriately reduced volume (50-60%)."""
+    validation_result = validator.validate(valid_user_12_week)
+    generator = TrainingPlanGenerator(methodology, validation_result)
+    plan = generator.generate(valid_user_12_week)
+
+    target_volume = valid_user_12_week.current_state.weekly_volume_hours
+
+    # Find recovery weeks
+    recovery_weeks = [w for w in plan.weeks if w.week_type == WeekType.RECOVERY]
+
+    for week in recovery_weeks:
+        # Recovery volume should be 50-60% of target
+        assert week.total_volume_hours >= target_volume * 0.45, \
+            f"Recovery week {week.week_number} volume too low"
+        assert week.total_volume_hours <= target_volume * 0.65, \
+            f"Recovery week {week.week_number} volume too high for recovery"
+        # Volume multiplier should be set correctly
+        assert week.volume_multiplier >= 0.45
+        assert week.volume_multiplier <= 0.65
+
+
+def test_recovery_week_has_limited_hi_sessions(methodology, validator, valid_user_12_week):
+    """Test that recovery weeks have at most 1 HI session."""
+    validation_result = validator.validate(valid_user_12_week)
+    generator = TrainingPlanGenerator(methodology, validation_result)
+    plan = generator.generate(valid_user_12_week)
+
+    # Find recovery weeks
+    recovery_weeks = [w for w in plan.weeks if w.week_type == WeekType.RECOVERY]
+
+    for week in recovery_weeks:
+        hi_sessions = [
+            s for s in week.sessions
+            if s.primary_zone in HIGH_INTENSITY_ZONES
+        ]
+        # Polarized methodology allows max 1 HI session in recovery
+        assert len(hi_sessions) <= 1, \
+            f"Recovery week {week.week_number} has too many HI sessions ({len(hi_sessions)})"
+
+
+def test_recovery_week_has_notes(methodology, validator, valid_user_12_week):
+    """Test that recovery weeks have contextual notes."""
+    validation_result = validator.validate(valid_user_12_week)
+    generator = TrainingPlanGenerator(methodology, validation_result)
+    plan = generator.generate(valid_user_12_week)
+
+    recovery_weeks = [w for w in plan.weeks if w.week_type == WeekType.RECOVERY]
+
+    for week in recovery_weeks:
+        assert week.week_notes is not None, \
+            f"Recovery week {week.week_number} should have notes"
+        assert "RECOVERY" in week.week_notes.upper(), \
+            "Recovery week notes should mention recovery"
+
+
+def test_mesocycle_metadata_populated(methodology, validator, valid_user_12_week):
+    """Test that mesocycle metadata is populated on non-taper weeks."""
+    validation_result = validator.validate(valid_user_12_week)
+    generator = TrainingPlanGenerator(methodology, validation_result)
+    plan = generator.generate(valid_user_12_week)
+
+    # Non-taper weeks should have mesocycle metadata
+    non_taper_weeks = [w for w in plan.weeks if w.phase != TrainingPhase.TAPER]
+
+    for week in non_taper_weeks:
+        assert week.mesocycle_number is not None, \
+            f"Week {week.week_number} should have mesocycle_number"
+        assert week.mesocycle_week is not None, \
+            f"Week {week.week_number} should have mesocycle_week"
+        assert week.mesocycle_week >= 1
+        assert week.mesocycle_week <= 4  # Max for 3:1 ratio
+
+
+def test_taper_weeks_not_in_mesocycle(methodology, validator, valid_user_12_week):
+    """Test that taper weeks are excluded from mesocycle structure."""
+    validation_result = validator.validate(valid_user_12_week)
+    generator = TrainingPlanGenerator(methodology, validation_result)
+    plan = generator.generate(valid_user_12_week)
+
+    taper_weeks = [w for w in plan.weeks if w.phase == TrainingPhase.TAPER]
+
+    for week in taper_weeks:
+        assert week.mesocycle_number is None, \
+            "Taper weeks should not be part of a mesocycle"
+        # Taper weeks are marked as LOAD (they handle their own volume reduction)
+        assert week.week_type == WeekType.LOAD
+
+
+def test_high_fragility_uses_2_1_ratio(methodology, validator, high_fragility_user):
+    """Test that high fragility athletes get 2:1 load:recovery ratio."""
+    validation_result = validator.validate(high_fragility_user)
+
+    if not validation_result.approved:
+        pytest.skip("High fragility user was refused validation")
+
+    generator = TrainingPlanGenerator(methodology, validation_result)
+    plan = generator.generate(high_fragility_user)
+
+    # With 2:1 ratio (3-week mesocycles), recovery weeks should be more frequent
+    non_taper_weeks = [w for w in plan.weeks if w.phase != TrainingPhase.TAPER]
+    recovery_weeks = [w for w in non_taper_weeks if w.week_type == WeekType.RECOVERY]
+
+    # Check plan decisions for ratio selection
+    ratio_decisions = [
+        d for d in plan.plan_decisions
+        if "Load:Recovery Ratio" in d.decision_point
+    ]
+    assert len(ratio_decisions) >= 1, "Should have ratio selection decision"
+    assert "2:1" in ratio_decisions[0].outcome, \
+        "High fragility should use 2:1 ratio"
+
+
+def test_plan_decisions_include_mesocycle_structure(methodology, validator, valid_user_12_week):
+    """Test that plan decisions document mesocycle structure."""
+    validation_result = validator.validate(valid_user_12_week)
+    generator = TrainingPlanGenerator(methodology, validation_result)
+    plan = generator.generate(valid_user_12_week)
+
+    decision_points = [d.decision_point for d in plan.plan_decisions]
+
+    assert "Load:Recovery Ratio Selection" in decision_points, \
+        "Should document ratio selection"
+    assert "Mesocycle Structure" in decision_points, \
+        "Should document mesocycle structure"
+
+
+def test_threshold_methodology_stricter_recovery():
+    """Test that Threshold methodology has stricter recovery (0 HI sessions)."""
+    # Load Threshold methodology
+    methodology_path = Path("models/methodology_threshold_70_20_10_v1.json")
+    with open(methodology_path) as f:
+        data = json.load(f)
+    threshold_methodology = MethodologyModelCard(**data)
+
+    # Load threshold user fixture
+    profile_path = Path("tests/fixtures/test_user_threshold_12_week.json")
+    with open(profile_path) as f:
+        user_data = json.load(f)
+    threshold_user = UserProfile(**user_data)
+
+    # Validate and generate plan
+    validator = MethodologyValidator(threshold_methodology)
+    validation_result = validator.validate(threshold_user)
+    assert validation_result.approved, "Threshold user should pass validation"
+
+    generator = TrainingPlanGenerator(threshold_methodology, validation_result)
+    plan = generator.generate(threshold_user)
+
+    # Recovery weeks in Threshold methodology should have 0 HI sessions
+    recovery_weeks = [w for w in plan.weeks if w.week_type == WeekType.RECOVERY]
+
+    for week in recovery_weeks:
+        hi_sessions = [
+            s for s in week.sessions
+            if s.primary_zone in HIGH_INTENSITY_ZONES
+        ]
+        assert len(hi_sessions) == 0, \
+            f"Threshold recovery week {week.week_number} should have 0 HI sessions"

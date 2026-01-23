@@ -13,14 +13,22 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class IntensityZone(str, Enum):
-    """Training intensity zones based on polarized methodology."""
+    """Training intensity zones based on physiological targets."""
 
-    ZONE_1 = "zone_1"  # Easy aerobic (60-70% max HR)
-    ZONE_2 = "zone_2"  # Moderate aerobic (70-80% max HR)
-    ZONE_3 = "zone_3"  # Tempo/threshold (80-85% max HR) - minimized in polarized
-    ZONE_4 = "zone_4"  # VO2max intervals (85-95% max HR)
-    ZONE_5 = "zone_5"  # Anaerobic/sprint (95-100% max HR)
+    ACTIVE_RECOVERY = "active_recovery"  # Very easy, promotes blood flow (<60% max HR)
+    ENDURANCE = "endurance"  # Aerobic base building (60-75% max HR)
+    TEMPO = "tempo"  # Moderate sustained effort (76-85% max HR)
+    THRESHOLD = "threshold"  # Lactate threshold (85-90% max HR)
+    VO2MAX = "vo2max"  # Maximal aerobic capacity (90-95% max HR)
+    ANAEROBIC = "anaerobic"  # Above lactate threshold (95-100% max HR)
+    SPRINT = "sprint"  # Neuromuscular / max power (all-out)
     REST = "rest"  # Complete rest day
+
+
+# Zone groupings for intensity distribution calculations
+LOW_INTENSITY_ZONES = [IntensityZone.ACTIVE_RECOVERY, IntensityZone.ENDURANCE]
+THRESHOLD_ZONES = [IntensityZone.TEMPO, IntensityZone.THRESHOLD]
+HIGH_INTENSITY_ZONES = [IntensityZone.VO2MAX, IntensityZone.ANAEROBIC, IntensityZone.SPRINT]
 
 
 class SessionType(str, Enum):
@@ -32,6 +40,45 @@ class SessionType(str, Enum):
     BRICK = "brick"  # Combined bike-run transition workout
     STRENGTH = "strength"
     REST = "rest"
+
+
+# Sport-specific zone display mappings for user-facing descriptions
+ZONE_DISPLAY = {
+    SessionType.BIKE: {  # Coggan 7-zone power model - direct mapping
+        IntensityZone.ACTIVE_RECOVERY: "Z1 (Recovery) - <55% FTP",
+        IntensityZone.ENDURANCE: "Z2 (Endurance) - 56-75% FTP",
+        IntensityZone.TEMPO: "Z3 (Tempo) - 76-90% FTP",
+        IntensityZone.THRESHOLD: "Z4 (Threshold) - 91-105% FTP",
+        IntensityZone.VO2MAX: "Z5 (VO2max) - 106-120% FTP",
+        IntensityZone.ANAEROBIC: "Z6 (Anaerobic) - 121-150% FTP",
+        IntensityZone.SPRINT: "Z7 (Neuromuscular) - max power",
+    },
+    SessionType.RUN: {  # Pace-based zones
+        IntensityZone.ACTIVE_RECOVERY: "Recovery pace - very easy",
+        IntensityZone.ENDURANCE: "Easy pace - conversational",
+        IntensityZone.TEMPO: "Tempo pace - comfortably hard",
+        IntensityZone.THRESHOLD: "Threshold pace - sustainable 60min",
+        IntensityZone.VO2MAX: "VO2max pace - 3-8min race effort",
+        IntensityZone.ANAEROBIC: "Repetition pace - 1-2min max effort",
+        IntensityZone.SPRINT: "Sprint - all-out strides/sprints",
+    },
+    SessionType.SWIM: {  # CSS-based zones
+        IntensityZone.ACTIVE_RECOVERY: "Recovery - easy drill work",
+        IntensityZone.ENDURANCE: "Endurance - CSS pace -10sec/100m",
+        IntensityZone.TEMPO: "Tempo - CSS pace -5sec/100m",
+        IntensityZone.THRESHOLD: "Threshold - CSS pace",
+        IntensityZone.VO2MAX: "VO2max - CSS pace +5sec/100m",
+        IntensityZone.ANAEROBIC: "Anaerobic - near max 100m pace",
+        IntensityZone.SPRINT: "Sprint - all-out 25m/50m",
+    },
+}
+
+
+def get_zone_display(session_type: SessionType, zone: IntensityZone) -> str:
+    """Get the sport-specific display string for a zone."""
+    if session_type in ZONE_DISPLAY and zone in ZONE_DISPLAY[session_type]:
+        return ZONE_DISPLAY[session_type][zone]
+    return zone.value
 
 
 class Weekday(str, Enum):
@@ -53,6 +100,13 @@ class TrainingPhase(str, Enum):
     BUILD = "build"  # Increase intensity and volume
     PEAK = "peak"  # Maximum intensity
     TAPER = "taper"  # Recovery before race
+
+
+class WeekType(str, Enum):
+    """Classification of week within mesocycle."""
+
+    LOAD = "load"  # Normal training week with progressive overload
+    RECOVERY = "recovery"  # Deload/recovery week with reduced volume
 
 
 class TrainingSession(BaseModel):
@@ -123,6 +177,32 @@ class TrainingWeek(BaseModel):
         None, description="Coach notes or guidance for the week"
     )
 
+    # Mesocycle/periodization fields
+    week_type: WeekType = Field(
+        default=WeekType.LOAD,
+        description="Whether this is a load or recovery week"
+    )
+
+    mesocycle_number: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Which mesocycle this week belongs to (1-based)"
+    )
+
+    mesocycle_week: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=6,
+        description="Week position within mesocycle (1-4 for 3:1, 1-3 for 2:1)"
+    )
+
+    volume_multiplier: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.5,
+        description="Volume adjustment multiplier applied (e.g., 0.55 for recovery)"
+    )
+
     @field_validator("total_volume_hours")
     @classmethod
     def validate_volume(cls, v: float) -> float:
@@ -153,9 +233,9 @@ class TrainingWeek(BaseModel):
 
         Returns:
             Dictionary with percentages of volume in each zone category:
-            - low_intensity: Zone 1-2 (easy aerobic)
-            - threshold: Zone 3 (tempo)
-            - high_intensity: Zone 4-5 (VO2max/anaerobic)
+            - low_intensity: Active Recovery + Endurance (easy aerobic)
+            - threshold: Tempo + Threshold
+            - high_intensity: VO2max + Anaerobic + Sprint
         """
         total_minutes = sum(
             session.duration_minutes
@@ -169,19 +249,19 @@ class TrainingWeek(BaseModel):
         low_intensity_minutes = sum(
             session.duration_minutes
             for session in self.sessions
-            if session.primary_zone in [IntensityZone.ZONE_1, IntensityZone.ZONE_2]
+            if session.primary_zone in LOW_INTENSITY_ZONES
         )
 
         threshold_minutes = sum(
             session.duration_minutes
             for session in self.sessions
-            if session.primary_zone == IntensityZone.ZONE_3
+            if session.primary_zone in THRESHOLD_ZONES
         )
 
         high_intensity_minutes = sum(
             session.duration_minutes
             for session in self.sessions
-            if session.primary_zone in [IntensityZone.ZONE_4, IntensityZone.ZONE_5]
+            if session.primary_zone in HIGH_INTENSITY_ZONES
         )
 
         return {
@@ -195,13 +275,13 @@ class IntensityDistributionSummary(BaseModel):
     """Summary of intensity distribution across the entire plan."""
 
     low_intensity_percent: float = Field(
-        ..., ge=0, le=100, description="Percentage of volume in Zone 1-2"
+        ..., ge=0, le=100, description="Percentage of volume in Active Recovery + Endurance zones"
     )
     threshold_percent: float = Field(
-        ..., ge=0, le=100, description="Percentage of volume in Zone 3"
+        ..., ge=0, le=100, description="Percentage of volume in Tempo + Threshold zones"
     )
     high_intensity_percent: float = Field(
-        ..., ge=0, le=100, description="Percentage of volume in Zone 4-5"
+        ..., ge=0, le=100, description="Percentage of volume in VO2max + Anaerobic + Sprint zones"
     )
 
     @field_validator("low_intensity_percent", "threshold_percent", "high_intensity_percent")
@@ -329,11 +409,11 @@ class TrainingPlan(BaseModel):
                 if session.primary_zone == IntensityZone.REST:
                     continue
 
-                if session.primary_zone in [IntensityZone.ZONE_1, IntensityZone.ZONE_2]:
+                if session.primary_zone in LOW_INTENSITY_ZONES:
                     total_low_minutes += session.duration_minutes
-                elif session.primary_zone == IntensityZone.ZONE_3:
+                elif session.primary_zone in THRESHOLD_ZONES:
                     total_threshold_minutes += session.duration_minutes
-                elif session.primary_zone in [IntensityZone.ZONE_4, IntensityZone.ZONE_5]:
+                elif session.primary_zone in HIGH_INTENSITY_ZONES:
                     total_high_minutes += session.duration_minutes
 
         total_minutes = total_low_minutes + total_threshold_minutes + total_high_minutes
