@@ -20,10 +20,13 @@ A decision-support tool for serious amateur triathletes that treats training met
 ### Phase 2: Plan Generation & Risk Analysis (✅ Complete)
 - **Fragility Score Calculation:** Quantifies user-specific risk using weighted penalty formula
 - **Adaptive Plan Generation:** Creates 12-week structured training plans that adjust to fragility levels
-- **Polarized 80/20 Methodology:** Implements evidence-based intensity distribution
+- **Multi-Methodology Support:** Polarized 80/20, Pyramidal 77/15/8, and Threshold 70/20/10 methodologies
+- **7-Zone Physiological Model:** Sport-specific intensity zones (cycling FTP, running pace, swimming CSS)
+- **Recovery Spacing:** Enforces minimum 2-day gap between high-intensity sessions
+- **Balanced Sport Distribution:** Minimum frequency per sport (2 runs, 2 bikes, 1 swim per week)
 - **Sensitivity Analysis:** Interactive "what-if" scenario exploration
 - **Enhanced Reasoning Traces:** Documents fragility calculations and plan generation decisions
-- **105 passing tests** covering fragility, planning, and sensitivity analysis
+- **120 passing tests** covering fragility, planning, and sensitivity analysis
 
 ### Phase 3: CLI Enhancement (✅ Complete)
 - **Complete CLI Interface:** Full workflow commands (validate, generate-plan, what-if, analyze-fragility)
@@ -51,7 +54,9 @@ training-planner/
 │   ├── schema_methodology.json         # Methodology JSON schema
 │   └── schema_user_profile.json        # User profile JSON schema
 ├── models/
-│   └── methodology_polarized.json      # Reference polarized 80/20 methodology
+│   ├── methodology_polarized.json      # Polarized 80/20 methodology
+│   ├── methodology_pyramidal_v1.json   # Pyramidal 77/15/8 methodology
+│   └── methodology_threshold_70_20_10_v1.json  # Threshold 70/20/10 methodology
 ├── plans/                              # Generated training plans (gitignored)
 │   └── .gitkeep
 ├── user_profiles/                      # User data (gitignored)
@@ -193,7 +198,7 @@ Then visit `http://localhost:5173` in your browser.
 ### Running Tests
 
 ```bash
-# Run all tests (106 total)
+# Run all tests (120 total)
 python3 -m pytest
 
 # Run with coverage
@@ -209,7 +214,7 @@ python3 -m pytest tests/test_sensitivity.py -v      # Sensitivity analysis tests
 python3 -m pytest -v
 ```
 
-Expected result: **105 passed, 1 skipped**
+Expected result: **120 passed**
 
 ## 💻 Usage Examples
 
@@ -398,13 +403,13 @@ The project maintains comprehensive test coverage across all modules:
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
-| `test_validator.py` | 28 | Safety gates, validation logic, refusal scenarios |
+| `test_planner.py` | 37 | Plan generation, multi-methodology, zone model, recovery spacing |
+| `test_schemas.py` | 20 | Pydantic schema validation |
 | `test_fragility.py` | 20 | Penalty calculations, score thresholds, recommendations |
-| `test_planner.py` | 23 | Plan generation, 80/20 distribution, phase logic |
+| `test_trace.py` | 17 | Reasoning trace generation, markdown export |
 | `test_sensitivity.py` | 14 | "What-if" scenarios, immutability, delta calculations |
-| `test_trace.py` | 20 | Reasoning trace generation, markdown export |
-| `test_schemas.py` | 1 | Schema validation |
-| **Total** | **106** | **All core functionality** |
+| `test_validator.py` | 12 | Safety gates, validation logic, refusal scenarios |
+| **Total** | **120** | **All core functionality** |
 
 ## 🔧 Configuration
 
@@ -412,6 +417,28 @@ The system uses JSON schemas for validation:
 
 - [docs/schema_methodology.json](docs/schema_methodology.json) - Defines training methodology structure
 - [docs/schema_user_profile.json](docs/schema_user_profile.json) - Defines athlete profile structure
+
+### Available Methodologies
+
+| Methodology | Intensity Distribution | Best For |
+|-------------|----------------------|----------|
+| **Polarized 80/20** | 80% low, 20% high | Athletes with limited time, maximizing aerobic gains |
+| **Pyramidal 77/15/8** | 77% low, 15% threshold, 8% high | Balanced approach, good stress tolerance |
+| **Threshold 70/20/10** | 70% low, 20% threshold, 10% high | Lactate threshold improvement focus |
+
+### Intensity Zones
+
+The system uses a 7-zone physiological model with sport-specific display:
+
+| Zone | Physiological Target | Cycling (FTP) | Running | Swimming (CSS) |
+|------|---------------------|---------------|---------|----------------|
+| Active Recovery | Blood flow promotion | Z1 <55% | Very easy | Easy drill work |
+| Endurance | Aerobic base | Z2 56-75% | Conversational | CSS -10sec/100m |
+| Tempo | Moderate sustained | Z3 76-90% | Comfortably hard | CSS -5sec/100m |
+| Threshold | Lactate threshold | Z4 91-105% | 60min sustainable | CSS pace |
+| VO2max | Maximal aerobic | Z5 106-120% | 3-8min race effort | CSS +5sec/100m |
+| Anaerobic | Above threshold | Z6 121-150% | 1-2min max | Near max 100m |
+| Sprint | Neuromuscular | Z7 max power | All-out strides | All-out 25m/50m |
 
 Default methodology: [models/methodology_polarized.json](models/methodology_polarized.json)
 
@@ -434,15 +461,18 @@ Default methodology: [models/methodology_polarized.json](models/methodology_pola
    - Five penalty calculators (sleep, stress, volume, intensity, recovery)
    - Risk interpretation and recommendations
 
-4. **[src/planner.py](src/planner.py)** (422 lines)
+4. **[src/planner.py](src/planner.py)** (1129 lines)
    - Training plan generation with fragility-based adjustments
    - Phase determination (base/build/peak/taper)
-   - 80/20 polarized intensity distribution
-   - Session scheduling with user preferences
+   - Multi-methodology intensity distribution (Polarized, Pyramidal, Threshold)
+   - Recovery spacing between high-intensity sessions
+   - Balanced sport distribution (minimum per sport)
+   - Week-over-week workout progression
 
-5. **[src/plan_schemas.py](src/plan_schemas.py)** (383 lines)
+5. **[src/plan_schemas.py](src/plan_schemas.py)** (488 lines)
    - TrainingPlan, TrainingWeek, TrainingSession models
-   - Intensity zone and session type enums
+   - 7-zone physiological intensity model
+   - Sport-specific zone display mappings (cycling FTP, running pace, swimming CSS)
    - Plan analysis methods (volume, intensity distribution)
 
 6. **[src/sensitivity.py](src/sensitivity.py)** (291 lines)
@@ -518,11 +548,18 @@ This is a demonstration project focused on AI alignment principles in fitness ap
 - [x] State management with Zustand + localStorage
 - [x] Strava integration preparation (OAuth stubs)
 
+### ✅ Phase 4.5: Plan Quality Improvements (Complete)
+- [x] 7-zone physiological intensity model (active_recovery, endurance, tempo, threshold, vo2max, anaerobic, sprint)
+- [x] Sport-specific zone display (cycling FTP zones, running pace zones, swimming CSS zones)
+- [x] Recovery spacing enforcement (minimum 2-day gap between high-intensity sessions)
+- [x] Balanced sport distribution (minimum 2 runs, 2 bikes, 1 swim per week)
+- [x] Week-over-week workout progression for variety within phases
+- [x] Multi-methodology support: Polarized 80/20, Pyramidal 77/15/8, Threshold 70/20/10
+
 ### 🔮 Phase 5: Future Enhancements
 - [ ] Strava OAuth implementation
 - [ ] Activity sync and adherence tracking
 - [ ] Overtraining detection from activity data
-- [ ] Multi-methodology support (Threshold, Pyramidal)
 - [ ] Historical plan tracking
 - [ ] Export to PDF/ICS
 - [ ] Plan comparison tools
@@ -554,4 +591,4 @@ For detailed API endpoint documentation, see [API_README.md](API_README.md).
 
 ---
 
-**Current Status:** Phase 1-4 complete with 105/106 tests passing. CLI commands, programmatic APIs, and web UI ready for use. Strava integration (Phase 5) in preparation.
+**Current Status:** Phase 1-4.5 complete with 120 tests passing. Multi-methodology support (Polarized, Pyramidal, Threshold), 7-zone physiological model with sport-specific display, and intelligent scheduling (recovery spacing, sport distribution). CLI, API, and web UI ready for use.
